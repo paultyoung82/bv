@@ -1304,18 +1304,24 @@ function selEmail(j){
   const i = (typeof j.sendIdx === "number" && j.sendIdx < j.emails.length) ? j.sendIdx : 0;
   return j.emails[i] || {to:"", cc:"", subject:""};
 }
+function cleanAddrs(s){
+  const m = String(s || "").match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g);
+  return m ? Array.from(new Set(m)).join(";") : String(s || "").trim();
+}
 function openEmail(){
   const j = activeJob(); if(!j) return;
   const em = selEmail(j);
   let subj = (em.subject && em.subject.trim()) || buildSubject(j, em.ref);
   if(em.relay && em.relay.trim()) subj = em.relay.trim() + " " + subj;
   if(!em.to && !subj){ toast("Add To and a subject in the Email section first"); return; }
-  let href = "mailto:" + encodeURIComponent(em.to || "");
+  let href = "mailto:" + encodeURIComponent(cleanAddrs(em.to));
   const q = [];
-  if(em.cc) q.push("cc=" + encodeURIComponent(em.cc));
+  if(em.cc) q.push("cc=" + encodeURIComponent(cleanAddrs(em.cc)));
   if(subj) q.push("subject=" + encodeURIComponent(subj));
   const asOf = (j.asOf && j.asOf.trim()) || nowStamp();
-  q.push("body=" + encodeURIComponent("Please see below update info as of " + asOf + " (local central time zone)."));
+  let body = "Please see below update info as of " + asOf + " (local central time zone).";
+  if(j.comments && j.comments.trim()) body += "\n\n" + j.comments.trim();
+  q.push("body=" + encodeURIComponent(body));
   href += "?" + q.join("&");
   window.location.href = href;
 }
