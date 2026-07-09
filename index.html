@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BV Updates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --navy:#101E42; --deep:#1B2C5E; --red:#D6152C;
+  --paper:#F4F6FB; --card:#FFFFFF; --line:#DEE4F0;
+  --ink:#17203A; --label:#5A6A8C; --hint:#8B98B5;
+}
+*{box-sizing:border-box; margin:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif; background:var(--paper); color:var(--ink); font-size:15px; line-height:1.5;}
+.wrap{max-width:780px; margin:0 auto; padding:0 14px 90px;}
+/* ---------- top bar ---------- */
+.topbar{background:var(--navy); color:#fff; padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px; position:sticky; top:0; z-index:50; border-bottom:3px solid var(--red);}
+.topbar-in{max-width:780px; margin:0 auto; display:flex; align-items:center; gap:10px;}
+.brand{font-family:'Archivo',sans-serif; font-weight:700; letter-spacing:.06em; font-size:15px;}
+.brand small{display:block; font-family:'Inter'; font-weight:400; font-size:10.5px; letter-spacing:.14em; color:#9FB0D8; text-transform:uppercase;}
+.topbar .spacer{flex:1}
+.backbtn{background:none; border:1px solid rgba(255,255,255,.35); color:#fff; border-radius:8px; padding:6px 12px; font-size:13px; font-family:'Inter'; cursor:pointer;}
+/* ---------- buttons ---------- */
+button{font-family:'Inter',sans-serif; cursor:pointer;}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink); font-size:14px; font-weight:500; padding:11px 16px;}
+.btn:active{transform:scale(.98)}
+.btn-navy{background:var(--navy); border-color:var(--navy); color:#fff;}
+.btn-red{background:var(--red); border-color:var(--red); color:#fff;}
+.btn-sm{padding:7px 12px; font-size:13px; border-radius:8px;}
+.btn-block{width:100%;}
+/* ---------- cards / sections ---------- */
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-top:14px; overflow:hidden;}
+.card-h{display:flex; align-items:center; gap:8px; padding:13px 16px; border-bottom:1px solid var(--line); background:#FAFBFE;}
+.card-h h2{font-family:'Archivo',sans-serif; font-size:13.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--deep);}
+.card-h .tag{margin-left:auto; font-size:11px; color:var(--hint); text-align:right;}
+.card-b{padding:14px 16px 16px;}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
+.grid1{display:grid; grid-template-columns:1fr; gap:10px;}
+.grid-times{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(10,auto); grid-auto-flow:column; gap:10px 12px;}
+.fld label{display:block; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--label); margin-bottom:4px;}
+.fld input,.fld select,.fld textarea{width:100%; border:1px solid var(--line); border-radius:9px; background:#fff; padding:10px 11px; font-size:15px; font-family:'Inter'; color:var(--ink); font-variant-numeric:tabular-nums;}
+.fld input::placeholder,.fld textarea::placeholder{color:#B7C1D6; font-style:italic; opacity:1;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:none; border-color:var(--deep); box-shadow:0 0 0 3px rgba(27,44,94,.12);}
+textarea.grow{min-height:0; resize:none; overflow:hidden; line-height:1.5;}
+textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
+.fld .row{display:flex; gap:8px; align-items:flex-start;}
+.fld .row textarea,.fld .row input{flex:1}
+.span2{grid-column:1 / -1;}
+/* computed readouts */
+.calc{background:#F7F9FD; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:10px; font-size:13.5px;}
+.calc table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;}
+.calc td{padding:3px 0;}
+.calc td:last-child{text-align:right; font-weight:600; color:var(--deep);}
+.calc .big{color:var(--red); font-family:'Archivo'; font-size:15px;}
+/* ---------- jobs list ---------- */
+.jobrow{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px 15px; margin-top:10px;}
+.jobrow:active{background:#F3F6FC}
+.jobrow .jr-main{flex:1; min-width:0;}
+.jobrow .jr-vessel{font-weight:600; font-size:15px;}
+.jobrow .jr-sub{font-size:12.5px; color:var(--label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.chip{font-size:11px; font-weight:600; padding:4px 9px; border-radius:20px; white-space:nowrap;}
+.pagetitle{font-family:'Archivo',sans-serif; font-size:20px; font-weight:700; color:var(--deep); margin-top:18px; letter-spacing:.02em;}
+.jr-cmt{font-size:12px; color:#4A5878; margin-top:4px; line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal;}
+.searchbox{margin-top:12px;}
+.searchbox input{width:100%; border:1px solid var(--line); border-radius:11px; padding:11px 13px; font-size:15px; background:#fff;}
+.searchbox input::placeholder{color:#B7C1D6; font-style:italic;}
+.empty{color:var(--hint); text-align:center; padding:40px 10px; font-size:14px;}
+/* ---------- email blocks ---------- */
+.emailblk{border:1px solid var(--line); border-radius:11px; padding:12px; margin-bottom:12px; background:#FBFCFE;}
+.emailblk .eb-h{display:flex; align-items:center; margin-bottom:10px;}
+.emailblk .eb-h .eb-t{font-family:'Archivo'; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--deep);}
+.emailblk .eb-h .eb-del{margin-left:auto; border:1px solid #F0C4CA; background:#fff; color:var(--red); border-radius:8px; width:30px; height:30px; font-size:16px; line-height:1;}
+.emailblk .fld{margin-bottom:9px;}
+.emailblk .fld:last-child{margin-bottom:0;}
+.sbtn{border:1px solid var(--line); background:#fff; border-radius:9px; width:42px; min-height:41px; font-size:15px; color:var(--deep); flex:none;}
+/* ---------- sticky action bar ---------- */
+.actbar{position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.95); backdrop-filter:blur(8px); border-top:1px solid var(--line); padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 10px); z-index:40;}
+.actbar-in{max-width:780px; margin:0 auto; display:flex; gap:9px;}
+.actbar .btn{flex:1}
+/* ---------- preview document ---------- */
+.doc{background:#fff; border:1px solid var(--line); border-radius:4px; margin-top:14px; box-shadow:0 1px 3px rgba(16,30,66,.08);}
+.doc-mast{background:#101E42; color:#fff; padding:16px 20px 14px; border-bottom:3px solid #D6152C; display:flex; align-items:flex-start; gap:12px;}
+.doc-mast .dm-brand{font-family:'Archivo'; font-weight:700; font-size:16px; letter-spacing:.06em;}
+.doc-mast .dm-tag{font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#9FB0D8; margin-top:2px;}
+.doc-mast .dm-right{margin-left:auto; text-align:right;}
+.doc-mast .dm-job{font-family:'Archivo'; font-weight:600; font-size:14px;}
+.doc-mast .dm-asof{font-size:11px; color:#B9C6E4; margin-top:2px;}
+.doc-sec{padding:12px 20px; border-bottom:1px solid #E7EBF4;}
+.doc-sec:last-child{border-bottom:none;}
+.doc-sec h3{font-family:'Archivo'; font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#D6152C; margin-bottom:8px;}
+.doc-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px 14px;}
+@media(max-width:560px){.doc-grid{grid-template-columns:repeat(2,1fr)}}
+.doc-kv .k{font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#7B88A8;}
+.doc-kv .v{font-size:13.5px; font-weight:500; color:#17203A; font-variant-numeric:tabular-nums; word-break:break-word;}
+.doc-times{columns:2; column-gap:26px;}
+@media(max-width:460px){.doc-times{columns:1}}
+.doc-times .tl{display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dotted #E7EBF4; font-size:13px; break-inside:avoid;}
+.doc-times .tl b{font-weight:400; color:#5A6A8C;}
+.doc-times .tl span{font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap;}
+.doc-vol{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+.doc-vol th{font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#7B88A8; text-align:right; padding:3px 0; border-bottom:1px solid #E7EBF4;}
+.doc-vol th:first-child{text-align:left;}
+.doc-vol td{padding:4px 0; text-align:right; border-bottom:1px dotted #EEF1F8;}
+.doc-vol td:first-child{text-align:left; color:#5A6A8C;}
+.doc-vol tr.hl td{font-weight:600; color:#101E42;}
+.doc-etf{font-size:13px; display:flex; flex-wrap:wrap; gap:6px 26px; font-variant-numeric:tabular-nums;}
+.doc-etf .k{color:#5A6A8C;}
+.doc-etf b{font-family:'Archivo'; color:#D6152C; font-weight:600;}
+.doc-comments{font-size:13.5px; white-space:pre-wrap; line-height:1.6; color:#17203A;}
+/* preview toggles + email picker */
+.togglerow{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
+.toggle{display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:#fff; border-radius:20px; padding:7px 13px; font-size:13px; color:var(--label); user-select:none; cursor:pointer;}
+.toggle input{accent-color:var(--navy); width:15px; height:15px;}
+.toggle.on{border-color:var(--deep); color:var(--deep); background:#E5EEFB;}
+.epick{display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:#fff; border-radius:20px; padding:7px 13px; font-size:13px; color:var(--label); cursor:pointer; max-width:100%;}
+.epick span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;}
+.epick.on{border-color:var(--red); color:var(--red); background:#FCEBED; font-weight:600;}
+details.dsec > summary{list-style:none; cursor:pointer;}
+details.dsec > summary::-webkit-details-marker{display:none;}
+.chev{margin-left:8px; color:var(--hint); transition:transform .15s; font-size:12px; flex:none;}
+details.dsec:not([open]) .chev{transform:rotate(-90deg);}
+/* misc */
+.hintline{font-size:12.5px; color:var(--hint); margin-top:10px; line-height:1.5;}
+.linkline{font-size:13px; margin-top:10px; word-break:break-all;}
+.linkline a{color:#164E9E; text-decoration:none; font-weight:500;}
+.toast{position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 78px); left:50%; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:13.5px; padding:10px 18px; border-radius:22px; z-index:99; opacity:0; transition:opacity .25s; pointer-events:none; max-width:88vw; text-align:center;}
+.toast.show{opacity:1;}
+.view{display:none;}
+.view.active{display:block;}
+.imgout{margin-top:14px; text-align:center;}
+.imgout img{max-width:100%; border:1px solid var(--line); border-radius:6px;}
+.mapframe{width:100%; height:480px; border:0; display:block;}
+.doc-mapimg{width:100%; display:block; border:1px solid #E7EBF4; border-radius:4px;}
+.snaprow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+/* ---------- inline status select on job rows ---------- */
+.chipsel{appearance:none; -webkit-appearance:none; border:1.5px solid rgba(16,30,66,.28); border-radius:20px; padding:5px 10px; font-size:11px; font-weight:600; font-family:'Inter'; cursor:pointer; white-space:nowrap;}
+.chipsel:focus{outline:2px solid var(--deep);}
+/* ---------- floating calculator ---------- */
+.calc-fab{position:fixed; right:12px; top:calc(env(safe-area-inset-top,0px) + 66px); z-index:46; height:40px; border-radius:22px; padding:0 16px; background:var(--navy); color:#fff; border:none; font-size:13px; font-weight:600; letter-spacing:.04em; box-shadow:0 4px 14px rgba(16,30,66,.3); display:none; align-items:center; justify-content:center; font-family:'Archivo',sans-serif; text-transform:uppercase;}
+/* ---------- quick job nav ---------- */
+#jobStrip{display:flex; gap:8px; overflow-x:auto; padding:12px 2px 2px; -webkit-overflow-scrolling:touch;}
+#jobStrip .jchip{flex:none; border:1px solid var(--line); background:#fff; border-radius:20px; padding:7px 12px; font-size:12.5px; display:inline-flex; align-items:center; gap:7px; color:var(--ink); white-space:nowrap;}
+#jobStrip .jchip.on{border-color:var(--navy); background:#E5EEFB; font-weight:600;}
+.jdot{width:9px; height:9px; border-radius:50%; flex:none; border:1px solid rgba(0,0,0,.12);}
+#jobRail{position:fixed; top:calc(env(safe-area-inset-top,0px) + 78px); left:12px; width:216px; max-height:calc(100vh - 112px); overflow:auto; display:none; z-index:30;}
+#jobRail .card{margin-top:0;}
+.railitem{display:flex; gap:9px; align-items:center; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid #F0F3F9; padding:10px 14px; font-size:13px; color:var(--ink);}
+.railitem:last-child{border-bottom:none;}
+.railitem .ri-t{min-width:0;}
+.railitem .ri-v{font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.railitem .ri-j{font-size:11px; color:var(--hint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.railitem.on{background:#E5EEFB;}
+.railitem.on .ri-v{font-weight:600; color:var(--deep);}
+.railitem:active{background:#F3F6FC;}
+@media(min-width:1150px){
+  #jobRail.railon{display:block;}
+  #jobStrip{display:none;}
+}
+.calc-panel{position:fixed; right:12px; top:calc(env(safe-area-inset-top,0px) + 118px); z-index:46; width:238px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 30px rgba(16,30,66,.25); padding:10px; display:none;}
+.calc-panel input{width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; font-size:17px; text-align:right; font-family:'Inter'; font-variant-numeric:tabular-nums; color:var(--ink);}
+.calc-panel input:focus{outline:none; border-color:var(--deep);}
+.calc-ans{font-size:11.5px; color:var(--hint); text-align:right; min-height:16px; margin:4px 2px 6px; font-variant-numeric:tabular-nums; word-break:break-all;}
+.calc-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+.calc-grid button{border:1px solid var(--line); background:#F7F9FD; border-radius:9px; padding:10px 0; font-size:15.5px; font-weight:500; color:var(--ink);}
+.calc-grid button:active{background:#E5EEFB;}
+.calc-grid button.op{background:#EEF2FA; color:var(--deep); font-weight:600;}
+.calc-grid button.eq{background:var(--navy); border-color:var(--navy); color:#fff; font-weight:600;}
+.calc-grid button.cl{color:var(--red);}
+.menu-pop{position:absolute; right:14px; top:54px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(16,30,66,.16); z-index:60; overflow:hidden; display:none; min-width:210px;}
+.menu-pop button{display:block; width:100%; text-align:left; background:none; border:none; padding:12px 16px; font-size:14px; color:var(--ink); border-bottom:1px solid #F0F3F9;}
+.menu-pop button:last-child{border-bottom:none;}
+.menu-pop button:active{background:#F3F6FC;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <button class="backbtn" id="btnBack" style="display:none">&#8249; Jobs</button>
+    <div class="brand">BUREAU VERITAS<small>Shaping a World of Trust</small></div>
+    <div class="spacer"></div>
+    <button class="backbtn" id="btnHome" style="display:none">Job Board</button>
+    <button class="backbtn" id="btnMenu">&#8942;</button>
+    <span id="topMeter" title="Job data size" style="font-size:11px; color:#9FB0D8; margin-left:2px; white-space:nowrap; font-variant-numeric:tabular-nums;"></span>
+  </div>
+</div>
+<div class="menu-pop" id="menuPop">
+  <button id="miExport">&#8681;&nbsp; Export jobs (JSON backup)</button>
+  <button id="miImport">&#8683;&nbsp; Import jobs from backup</button>
+  <button id="miNew">&#43;&nbsp; New job</button>
+  <div id="storageMeter" style="padding:10px 16px 12px; font-size:12px; color:var(--label); border-top:1px solid #F0F3F9; cursor:default;"></div>
+</div>
+<input type="file" id="importFile" accept=".json,application/json" style="display:none">
+
+<div class="wrap">
+
+  <!-- ============ JOBS LIST ============ -->
+  <div class="view active" id="view-jobs">
+    <div class="pagetitle">Job Board</div>
+    <button class="btn btn-navy btn-block" id="btnNewJob" style="margin-top:12px">&#43;&nbsp; New job</button>
+    <div class="searchbox"><input id="jobSearch" placeholder="Search job#, vessel, barge&hellip;"></div>
+    <div id="jobList"></div>
+    <div id="purgeWrap"></div>
+    <p class="hintline">Data is saved on this device automatically. Use Export / Import (menu &#8942;) to move jobs between your phone and computer via OneDrive.</p>
+  </div>
+
+  <!-- ============ EDITOR ============ -->
+  <div class="view" id="view-edit">
+    <div id="jobStrip"></div>
+    <div class="card" style="margin-top:6px">
+      <details class="dsec" id="dsecJob" open>
+      <summary class="card-h"><h2>Job information</h2><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></summary>
+      <div class="card-b"><div class="grid2" id="secJob"></div></div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecEmail" open>
+      <summary class="card-h"><h2>Email</h2><span class="tag">first email is the default</span><span class="chev">&#9662;</span></summary>
+      <div class="card-b">
+        <div id="secEmails"></div>
+        <button class="btn btn-sm" type="button" id="btnAddEmail">&#43; Add email</button>
+        <p class="hintline">&#8635; auto-generates the subject from job info &mdash; add your APD# after.</p>
+      </div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecTimes" open>
+      <summary class="card-h"><h2>Movement times</h2><span class="tag">Enter or Tab moves down</span><span class="chev">&#9662;</span></summary>
+      <div class="card-b"><div class="grid-times" id="secTimes"></div>
+      <p class="hintline">Free format, same as the sheet &mdash; e.g. <b>6/2/26 1418</b>. Only filled times appear in the update.</p></div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecVol" open>
+      <summary class="card-h"><h2>Volume comparison</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="card-b">
+        <div class="grid2" id="secVol"></div>
+        <div class="calc" id="volCalc"></div>
+      </div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecEtf1">
+      <summary class="card-h"><h2>ETF &mdash; current quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="card-b"><div class="grid2" id="secEtf1"></div><div class="calc" id="etf1Calc"></div></div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecEtf2">
+      <summary class="card-h"><h2>ETF &mdash; fixed quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="card-b"><div class="grid2" id="secEtf2"></div><div class="calc" id="etf2Calc"></div></div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecRate">
+      <summary class="card-h"><h2>Load / discharge rate</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="card-b"><div class="grid2" id="secRate"></div><div class="calc" id="rateCalc"></div></div>
+      </details>
+    </div>
+    <div class="card">
+      <details class="dsec" id="dsecComments" open>
+      <summary class="card-h"><h2>Additional comments</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="card-b"><div class="grid1" id="secComments"></div></div>
+      </details>
+    </div>
+    <div class="card" id="editMapCard" style="display:none">
+      <details class="dsec" id="dsecMap" open>
+      <summary class="card-h"><h2>Live vessel map</h2><span class="tag">screenshot &rarr; snapshot goes in the image</span><span class="chev">&#9662;</span></summary>
+      <div id="editMapBody"></div>
+      <div class="card-b" style="padding-top:10px"><div class="linkline" id="editMapCtl"></div></div>
+      </details>
+    </div>
+    <div style="margin-top:16px; display:flex; gap:9px;">
+      <button class="btn btn-sm" id="btnDup">Duplicate job</button>
+      <button class="btn btn-sm" id="btnDel" style="color:var(--red); border-color:#F0C4CA;">Delete job</button>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW ============ -->
+  <div class="view" id="view-preview">
+    <div class="togglerow" id="prevToggles"></div>
+    <div class="togglerow" id="emailPick" style="display:none"></div>
+    <div class="doc" id="docWrap"><div id="docNode"></div></div>
+    <div class="imgout" id="imgOut"></div>
+    <div class="card" id="mapCard" style="display:none">
+      <div class="card-h"><h2>Vessel map snapshot</h2><span class="tag">appears below comments in the image</span></div>
+      <div id="mapBody"></div>
+      <div class="card-b" style="padding-top:10px"><div class="linkline" id="mapLink"></div></div>
+    </div>
+    <p class="hintline" id="prevHint"></p>
+  </div>
+
+</div>
+
+<!-- sticky actions -->
+<div class="actbar" id="actbar" style="display:none">
+  <div class="actbar-in" id="actbarIn"></div>
+</div>
+
+<!-- floating calculator (entry page) -->
+<button class="calc-fab" id="calcFab" title="Calculator" type="button">Calculator</button>
+<div id="jobRail"></div>
+<div class="calc-panel" id="calcPanel">
+  <input id="calcIn" inputmode="decimal" placeholder="0" autocomplete="off">
+  <div class="calc-ans" id="calcAns"></div>
+  <div class="calc-grid" id="calcGrid">
+    <button type="button" class="cl" data-cb="C">C</button>
+    <button type="button" class="op" data-cb="(">(</button>
+    <button type="button" class="op" data-cb=")">)</button>
+    <button type="button" class="op" data-cb="/">&divide;</button>
+    <button type="button" data-cb="7">7</button>
+    <button type="button" data-cb="8">8</button>
+    <button type="button" data-cb="9">9</button>
+    <button type="button" class="op" data-cb="*">&times;</button>
+    <button type="button" data-cb="4">4</button>
+    <button type="button" data-cb="5">5</button>
+    <button type="button" data-cb="6">6</button>
+    <button type="button" class="op" data-cb="-">&minus;</button>
+    <button type="button" data-cb="1">1</button>
+    <button type="button" data-cb="2">2</button>
+    <button type="button" data-cb="3">3</button>
+    <button type="button" class="op" data-cb="+">&#43;</button>
+    <button type="button" data-cb="0">0</button>
+    <button type="button" data-cb=".">.</button>
+    <button type="button" data-cb="back">&#9003;</button>
+    <button type="button" class="eq" data-cb="=">=</button>
+  </div>
+</div>
+<input type="file" id="mapFile" accept="image/*" style="display:none">
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ================= state ================= */
+const LS_KEY = "bv_jobs_v1";
+let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null };
+
+const idb = { db: null };
+let useIDB = false;
+function idbOpen(){
+  return new Promise((res, rej)=>{
+    if(!window.indexedDB) return rej(new Error("no idb"));
+    const r = indexedDB.open("bv_app", 1);
+    r.onupgradeneeded = ()=> r.result.createObjectStore("kv");
+    r.onsuccess = ()=> res(r.result);
+    r.onerror = ()=> rej(r.error);
+  });
+}
+function idbGet(key){
+  return new Promise((res, rej)=>{
+    const t = idb.db.transaction("kv","readonly").objectStore("kv").get(key);
+    t.onsuccess = ()=> res(t.result);
+    t.onerror = ()=> rej(t.error);
+  });
+}
+function idbSet(key, val){
+  return new Promise((res, rej)=>{
+    const t = idb.db.transaction("kv","readwrite").objectStore("kv").put(val, key);
+    t.onsuccess = ()=> res();
+    t.onerror = ()=> rej(t.error);
+  });
+}
+async function loadState(){
+  try{
+    idb.db = await idbOpen();
+    useIDB = true;
+    let raw = await idbGet("jobs");
+    if(raw == null){
+      raw = localStorage.getItem(LS_KEY);   /* one-time migration from old browser storage */
+      if(raw) await idbSet("jobs", raw);
+    }
+    if(raw) state.jobs = JSON.parse(raw) || [];
+  } catch(e){
+    useIDB = false;
+    try{ const raw = localStorage.getItem(LS_KEY); if(raw) state.jobs = JSON.parse(raw) || []; }
+    catch(_e){ state.jobs = []; }
+  }
+  state.jobs.forEach(migrate);
+}
+function updateTopMeter(){
+  const el = document.getElementById("topMeter");
+  if(!el) return;
+  try{
+    const mb = JSON.stringify(state.jobs).length / 1048576;
+    el.textContent = mb.toFixed(1) + " MB";
+  } catch(e){}
+}
+function migrate(j){
+  if(!Array.isArray(j.emails)){
+    j.emails = [];
+    const subs = Array.isArray(j.subjects) ? j.subjects : (j.subject ? [j.subject] : []);
+    if(subs.length){
+      subs.forEach(s => j.emails.push({to: j.to || "", cc: j.cc || "", subject: s || ""}));
+    } else {
+      j.emails.push({to: j.to || "", cc: j.cc || "", subject: ""});
+    }
+  }
+  if(!j.emails.length) j.emails.push({to:"", cc:"", subject:""});
+  j.emails.forEach(em => {
+    if(em.ref == null || em.ref === "") em.ref = j.refNo || "";
+    if(!em.relay || em.relay === "#BV#") em.relay = "*BV*";
+  });
+  if(typeof j.sendIdx !== "number" || j.sendIdx < 0) j.sendIdx = 0;
+  if(j.sendIdx >= j.emails.length) j.sendIdx = 0;
+  MOVE_TIMES.forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
+}
+function persist(){
+  const data = JSON.stringify(state.jobs);
+  if(useIDB){
+    idbSet("jobs", data).then(()=>{ flashSaved(); updateTopMeter(); })
+      .catch(()=> toast("Could not save — storage error"));
+  } else {
+    try{ localStorage.setItem(LS_KEY, data); flashSaved(); updateTopMeter(); }
+    catch(e){ toast("Could not save — storage full"); }
+  }
+}
+let savedTimer = null;
+function flashSaved(){
+  const t = document.getElementById("savedTag");
+  if(!t) return;
+  t.textContent = "Saved";
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(()=>{ t.textContent=""; }, 1400);
+}
+function uid(){ return "j" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function activeJob(){ return state.jobs.find(j => j.id === state.activeId); }
+
+/* ================= status scheme (from the xlsm) ================= */
+const STATUSES = ["0.0 Working","1.0 Incoming","1.1 Pending","1.2 ST Close","1.3 Needs Load","1.4 Testing Underway","2.0 Completed","3.0 Confirm Sent","3.1 Shore Confirmed","4.0 Confirmed","5.0 Final Sent","7.0 Preview","8.0 Job Completed"];
+const STATUS_COLORS = {
+  "0.0": {bg:"#C6EFCE", fg:"#1E5631"},
+  "1.0": {bg:"#F2DD4E", fg:"#4A4300"},
+  "1.1": {bg:"#B4C7E7", fg:"#1F3C6E"},
+  "1.2": {bg:"#FFEB9C", fg:"#6B5300"},
+  "1.3": {bg:"#5C4033", fg:"#FFFFFF"},
+  "1.4": {bg:"#FFD966", fg:"#6B4E00"},
+  "2.0": {bg:"#FFC7CE", fg:"#8A1E2C"},
+  "3.0": {bg:"#7030A0", fg:"#FFFFFF"},
+  "3.1": {bg:"#D5B8EA", fg:"#4A1E6E"},
+  "4.0": {bg:"#FFC000", fg:"#5C4500"},
+  "5.0": {bg:"#00B050", fg:"#FFFFFF"},
+  "7.0": {bg:"#00B0F0", fg:"#003A52"},
+  "8.0": {bg:"#C00000", fg:"#FFFFFF"}
+};
+const ROW_COLORS = { "0.0":"#E9F6ED", "1.1":"#E9F1FB", "1.0":"#FDF9DF" };
+function rowStyle(status){
+  const code = String(status||"").split(" ")[0];
+  return ROW_COLORS[code] ? ' style="background:' + ROW_COLORS[code] + '"' : "";
+}
+function chipStyle(status){
+  const code = String(status||"").split(" ")[0];
+  const c = STATUS_COLORS[code] || {bg:"#ECEFF4", fg:"#5A6470"};
+  return 'style="background:' + c.bg + ';color:' + c.fg + '"';
+}
+
+/* =====================================================================
+   ================  EDIT LABELS HERE  =================================
+   To rename any field: change the text in l:"..." below.
+   NEVER change the k:"..." keys — they identify your saved data.
+   Section titles used in the generated image are in DOC_TITLES.
+   Card headers on screen are plain text in the HTML above (search
+   for the <h2> tags) and can be edited the same way.
+   ===================================================================== */
+const DOC_TITLES = {
+  times: "Movement times",
+  vol: "Volume comparison (unconfirmed)",
+  etf: "Estimated time of finish",
+  comments: "Additional comments",
+  position: "Vessel position"
+};
+/* ================= field configs ================= */
+const JOB_FIELDS = [
+  {k:"jobNo",   l:"BV Job#",         ph:"ex: USTEX-26-00805"},
+  {k:"vessel",  l:"Vsl / Boat name", ph:"ex: Hafnia Australia"},
+  {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 PBL 3422 or -"},
+  {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"]},
+  {k:"cargo",   l:"Cargo",           ph:"ex: HS VTB"},
+  {k:"port",    l:"Port",            ph:"ex: VALERO TXC"},
+  {k:"sts",     l:"S/T(s)",          ph:"ex: 089"},
+  {k:"vef",     l:"VEF",             ph:"ex: 0.9994", num:true},
+  {k:"status",  l:"Status",          type:"select", opts:STATUSES},
+  {k:"boatLink",l:"Boat link",       ph:"ex: https://www.vesselfinder.com/?imo=9467794", span:2, grow:true}
+];
+/* Movement times — full sequence; grid flows down column 1 then column 2 */
+const MOVE_TIMES = [
+  {k:"nort",     l:"N.O.R.T"},
+  {k:"dInspNot", l:"Inspector Notified"},
+  {k:"arr",      l:"Vsl/Bg(s) Arrived"},
+  {k:"dk",       l:"Vsl/Bg(s) Docked"},
+  {k:"dInspArr", l:"Inspector Arrived"},
+  {k:"dCommInsp",l:"Commenced Inspection"},
+  {k:"dCompInsp",l:"Completed Inspection"},
+  {k:"dStOpen",  l:"Shore Tank Opened"},
+  {k:"hoseOn",   l:"Hose/Arm Connected"},
+  {k:"comm",     l:"Commenced Operations"},
+  {k:"suspend",  l:"Suspend for L/D"},
+  {k:"resumed",  l:"Resumed Operations"},
+  {k:"dInspNot2",l:"Inspector Notified (F)"},
+  {k:"dInspArr2",l:"Inspector Arrived (F)"},
+  {k:"comp",     l:"Completed Operations"},
+  {k:"dStClose", l:"Shore Tank Closed"},
+  {k:"dCommF",   l:"Commenced Final Inspection"},
+  {k:"dCompF",   l:"Completed Final Inspection"},
+  {k:"hoseOff",  l:"Hose/Arm Disconnected"},
+  {k:"rlsd",     l:"Vsl/Bg(s) Released"}
+];
+const VOL_FIELDS = [
+  {k:"vShore", l:"Shore figure", num:true, ph:"ex: 350,900.56", fmt:true},
+  {k:"vArr",   l:"Vsl/Bg arrival", num:true, ph:"ex: 351,073.06", fmt:true},
+  {k:"vDpt",   l:"Vsl/Bg departure", num:true, ph:"ex: 0.00", fmt:true}
+];
+const FMT_DP = {vShore:2, vArr:2, vDpt:2, vef:4};
+const ETF1_FIELDS = [
+  {k:"e1AsOf",  l:"Qty loaded as of", type:"datetime-local"},
+  {k:"e1Total", l:"Total quantity", num:true, ph:"ex: 165,000"},
+  {k:"e1Loaded",l:"Quantity loaded", num:true, ph:"ex: 135,000"},
+  {k:"e1Rate",  l:"Rate / hr", num:true, ph:"ex: 3,500"}
+];
+const ETF2_FIELDS = [
+  {k:"e2Qty",  l:"Quantity", num:true, ph:"ex: 25,000"},
+  {k:"e2Rate", l:"Rate / hr", num:true, ph:"ex: 1,500"},
+  {k:"e2Start",l:"Start date", type:"datetime-local", span:2}
+];
+const RATE_FIELDS = [
+  {k:"rComm", l:"Comm load / disch", type:"datetime-local"},
+  {k:"rComp", l:"Comp load / disch", type:"datetime-local"},
+  {k:"rQty",  l:"Quantity", num:true, span:2, ph:"ex: 165,000"}
+];
+
+function blankJob(){
+  const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(),
+    status:"0.0 Working", incVol:true, incEtf:false, asOf:"", comments:"", refNo:"", mapImg:"",
+    emails:[{to:"", cc:"", subject:"", ref:"", relay:"*BV*"}], sendIdx:0 };
+  [].concat(JOB_FIELDS, MOVE_TIMES, VOL_FIELDS, ETF1_FIELDS, ETF2_FIELDS, RATE_FIELDS)
+    .forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
+  return j;
+}
+
+/* ================= helpers ================= */
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function pNum(v){
+  if(v === "" || v == null) return null;
+  const n = parseFloat(String(v).replace(/,/g,"").trim());
+  return isNaN(n) ? null : n;
+}
+function fmtN(n, dp){
+  if(n == null || !isFinite(n)) return "—";
+  return n.toLocaleString("en-US",{minimumFractionDigits: dp==null?2:dp, maximumFractionDigits: dp==null?2:dp});
+}
+function fmtPct(n){ return (n==null || !isFinite(n)) ? "—" : (n*100).toLocaleString("en-US",{maximumFractionDigits:3}) + "%"; }
+function fmtDT(d){
+  if(!(d instanceof Date) || isNaN(d)) return "—";
+  const mm = d.getMonth()+1, dd = d.getDate(), yy = String(d.getFullYear()).slice(2);
+  const h = String(d.getHours()).padStart(2,"0"), mi = String(d.getMinutes()).padStart(2,"0");
+  return mm + "/" + dd + "/" + yy + " " + h + mi;
+}
+function parseDTL(v){ if(!v) return null; const d = new Date(v); return isNaN(d) ? null : d; }
+function nowStamp(){ return fmtDT(new Date()); }
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function autosize(el){
+  el.style.height = "auto";
+  el.style.height = (el.scrollHeight + 2) + "px";
+}
+function autosizeAll(root){
+  (root || document).querySelectorAll("textarea.grow").forEach(autosize);
+}
+
+/* ================= formulas (mirroring Sheet1) ================= */
+function computeVol(j){
+  const shore = pNum(j.vShore), arr = pNum(j.vArr), dpt = pNum(j.vDpt), vef = pNum(j.vef);
+  const diff = (arr!=null || dpt!=null) ? ( (arr||0) - (dpt||0) ) : null;
+  const difference = (diff!=null && shore!=null) ? diff - shore : null;
+  const pct = (difference!=null && shore) ? difference/shore : null;
+  let wDiff = null, wDifference = null, wPct = null;
+  if(diff!=null && vef){ wDiff = diff / vef; }
+  if(wDiff!=null && shore!=null){ wDifference = wDiff - shore; wPct = shore ? wDifference/shore : null; }
+  return {shore, arr, dpt, diff, difference, pct, vef, wDiff, wDifference, wPct};
+}
+function computeEtf1(j){
+  const asOf = parseDTL(j.e1AsOf), total = pNum(j.e1Total), loaded = pNum(j.e1Loaded), rate = pNum(j.e1Rate);
+  if(total==null || rate==null || !rate) return null;
+  const left = total - (loaded||0);
+  const hours = left / rate, days = hours/24;
+  const etf = asOf ? new Date(asOf.getTime() + hours*3600000) : null;
+  return {left, hours, days, etf};
+}
+function computeEtf2(j){
+  const start = parseDTL(j.e2Start), qty = pNum(j.e2Qty), rate = pNum(j.e2Rate);
+  if(qty==null || rate==null || !rate) return null;
+  const hours = qty/rate, days = hours/24;
+  const etf = start ? new Date(start.getTime() + hours*3600000) : null;
+  return {hours, days, etf};
+}
+function computeRate(j){
+  const a = parseDTL(j.rComm), b = parseDTL(j.rComp), qty = pNum(j.rQty);
+  if(!a || !b || qty==null) return null;
+  const hours = (b - a)/3600000;
+  if(hours <= 0) return {hours, rate:null};
+  return {hours, rate: qty/hours};
+}
+function normRef(v){
+  let t = String(v || "").trim();
+  if(!t) return "";
+  t = t.replace(/^r\s*e\s*f?\s*#\s*/i, "").trim();
+  return t ? "REF# " + t : "";
+}
+function buildSubject(j, refVal){
+  const parts = [];
+  const who = (j.barges && j.barges.trim() && j.barges.trim() !== "-")
+    ? (j.barges.trim().toUpperCase() + (j.vessel ? " (" + j.vessel.trim().toUpperCase() + ")" : ""))
+    : (j.vessel || "").trim().toUpperCase();
+  const ref = normRef(refVal != null ? refVal : j.refNo);
+  if(ref) parts.push(ref);
+  parts.push("UPDATE");
+  if(who) parts.push(who);
+  if(j.operation) parts.push(j.operation);
+  if(j.cargo) parts.push(j.cargo.trim().toUpperCase());
+  if(j.port) parts.push(j.port.trim().toUpperCase());
+  if(j.jobNo) parts.push(j.jobNo.trim());
+  return parts.join(" - ");
+}
+
+/* ================= VesselFinder ================= */
+function vfIds(link){
+  if(!link) return null;
+  let m = String(link).match(/[?&]imo=(\d{7})/i);
+  if(m) return {imo:m[1]};
+  m = String(link).match(/[?&]mmsi=(\d{9})/i);
+  if(m) return {mmsi:m[1]};
+  m = String(link).match(/IMO-(\d{7})/i);
+  if(m) return {imo:m[1]};
+  m = String(link).match(/MMSI-(\d{9})/i);
+  if(m) return {mmsi:m[1]};
+  m = String(link).match(/vessels\/details\/(\d{7,9})/i);
+  if(m) return (m[1].length === 9) ? {mmsi:m[1]} : {imo:m[1]};
+  return null;
+}
+function vfEmbed(ids){
+  const idVar = ids.imo ? 'var imo="' + ids.imo + '";' : 'var mmsi="' + ids.mmsi + '";';
+  const doc = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
+    + '<body style="margin:0">'
+    + '<scr' + 'ipt type="text/javascript">'
+    + 'var width="100%";var height="480";var zoom="9";var names=false;'
+    + idVar
+    + 'var show_track=false;'
+    + '</scr' + 'ipt>'
+    + '<scr' + 'ipt type="text/javascript" src="https://www.vesselfinder.com/aismap.js"></scr' + 'ipt>'
+    + '</body></html>';
+  return '<iframe class="mapframe" title="Live vessel map" srcdoc="' + doc.replace(/"/g,"&quot;") + '"></iframe>';
+}
+
+/* ================= view switching ================= */
+function show(view){
+  state.view = view;
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + view).classList.add("active");
+  document.getElementById("btnBack").style.display = (view === "jobs") ? "none" : "";
+  document.getElementById("btnHome").style.display = (view === "jobs") ? "none" : "";
+  document.getElementById("btnBack").textContent = (view === "preview") ? "\u2039 Edit" : "\u2039 Jobs";
+  const bar = document.getElementById("actbar"), barIn = document.getElementById("actbarIn");
+  if(view === "edit"){
+    bar.style.display = "";
+    barIn.innerHTML = '<button class="btn btn-navy" id="abPreview">Preview &amp; send &nbsp;&#8250;</button>';
+    document.getElementById("abPreview").onclick = ()=>{ renderPreview(); show("preview"); };
+    requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
+  } else if(view === "preview"){
+    bar.style.display = "";
+    barIn.innerHTML =
+      '<button class="btn btn-navy" id="abImage">Create image</button>' +
+      '<button class="btn btn-red" id="abEmail">Open email</button>';
+    document.getElementById("abImage").onclick = generateImage;
+    document.getElementById("abEmail").onclick = openEmail;
+  } else {
+    bar.style.display = "none";
+  }
+  document.getElementById("calcFab").style.display = (view === "edit") ? "flex" : "none";
+  if(view !== "edit") document.getElementById("calcPanel").style.display = "none";
+  document.getElementById("jobRail").classList.toggle("railon", view === "edit" || view === "preview");
+  window.scrollTo(0,0);
+}
+document.getElementById("btnHome").onclick = ()=>{ renderJobs(); show("jobs"); };
+document.getElementById("btnBack").onclick = ()=>{
+  if(state.view === "preview") show("edit");
+  else { renderJobs(); show("jobs"); }
+};
+
+/* ================= jobs list ================= */
+function renderJobs(){
+  const q = (document.getElementById("jobSearch").value || "").toLowerCase();
+  const list = document.getElementById("jobList");
+  const jobs = state.jobs.slice().sort((a,b)=>{
+    const sa = parseFloat(a.status), sb = parseFloat(b.status);
+    const na = isNaN(sa) ? 99 : sa, nb = isNaN(sb) ? 99 : sb;
+    if(na !== nb) return na - nb;
+    return (b.updatedAt||0) - (a.updatedAt||0);
+  }).filter(j => !q || [j.jobNo,j.vessel,j.barges,j.port,j.cargo,j.operation].join(" ").toLowerCase().includes(q));
+  if(!jobs.length){
+    list.innerHTML = '<div class="empty">' + (state.jobs.length ? "No jobs match your search." :
+      "No jobs yet.<br>Tap <b>New job</b> to set up your first one.") + "</div>";
+    return;
+  }
+  list.innerHTML = jobs.map(j => {
+    const sub = [j.jobNo, j.operation, j.cargo, j.port].filter(x => x && String(x).trim()).map(esc).join(" &middot; ");
+    const sel = '<select class="chipsel" data-sid="' + j.id + '" ' + chipStyle(j.status) + ">" +
+      STATUSES.map(o => '<option value="' + esc(o) + '"' + (o===j.status?" selected":"") + ">" + esc(o) + "</option>").join("") +
+      "</select>";
+    const cmt = (j.comments && j.comments.trim())
+      ? '<div class="jr-cmt" title="' + esc(j.comments) + '">' + esc(j.comments.trim()) + "</div>" : "";
+    return '<div class="jobrow" data-id="' + j.id + '" role="button" tabindex="0"' + rowStyle(j.status) + '>' +
+      '<div class="jr-main"><div class="jr-vessel">' + esc(j.vessel || j.jobNo || "Untitled job") +
+        ((j.barges && j.barges.trim() && j.barges.trim() !== "-") ? ' <span style="font-weight:500;color:#5A6A8C">&middot; ' + esc(j.barges.trim()) + "</span>" : "") + '</div>' +
+      '<div class="jr-sub">' + sub + "</div>" + cmt + "</div>" + sel +
+    "</div>";
+  }).join("");
+  list.querySelectorAll(".jobrow").forEach(row => {
+    row.onclick = (e)=>{ if(e.target.closest(".chipsel")) return; openJob(row.dataset.id); };
+    row.onkeydown = (e)=>{ if(e.key === "Enter" && !e.target.closest(".chipsel")) openJob(row.dataset.id); };
+  });
+  list.querySelectorAll(".chipsel").forEach(sel => {
+    sel.onclick = (e)=> e.stopPropagation();
+    sel.onchange = (e)=>{
+      e.stopPropagation();
+      const j = state.jobs.find(x => x.id === sel.dataset.sid);
+      if(!j) return;
+      j.status = sel.value; j.updatedAt = Date.now(); persist();
+      renderJobs();
+    };
+  });
+  renderPurge();
+}
+function renderPurge(){
+  const wrap = document.getElementById("purgeWrap");
+  const done = state.jobs.filter(j => String(j.status||"").startsWith("8.0"));
+  wrap.innerHTML = done.length
+    ? '<button class="btn btn-sm btn-block" id="btnPurge" style="margin-top:14px; color:var(--red); border-color:#F0C4CA;">Delete all 8.0 Job Completed (' + done.length + ")</button>"
+    : "";
+  const b = document.getElementById("btnPurge");
+  if(b) b.onclick = ()=>{
+    if(!confirm("Delete " + done.length + " completed job" + (done.length>1?"s":"") + "? Tip: Export a backup first (menu \u22EE) — this cannot be undone.")) return;
+    state.jobs = state.jobs.filter(j => !String(j.status||"").startsWith("8.0"));
+    persist(); renderJobs();
+    toast(done.length + " completed job" + (done.length>1?"s":"") + " deleted");
+  };
+}
+document.getElementById("jobSearch").addEventListener("input", renderJobs);
+document.getElementById("btnNewJob").onclick = newJob;
+function newJob(){
+  const j = blankJob();
+  state.jobs.push(j); persist();
+  openJob(j.id);
+}
+function openJob(id){
+  state.activeId = id;
+  renderEditor();
+  show("edit");
+}
+
+/* ================= editor ================= */
+function fieldHTML(f, val){
+  const span = f.span === 2 ? " span2" : "";
+  let inner;
+  if(f.type === "select"){
+    inner = '<select data-k="' + f.k + '">' + f.opts.map(o =>
+      '<option value="' + esc(o) + '"' + (o===val?" selected":"") + ">" + (o||"—") + "</option>").join("") + "</select>";
+  } else if(f.type === "datetime-local"){
+    inner = '<input type="datetime-local" data-k="' + f.k + '" value="' + esc(val) + '">';
+  } else if(f.grow){
+    inner = '<textarea class="grow" rows="1" data-k="' + f.k + '" placeholder="' + esc(f.ph||"") + '">' + esc(val) + "</textarea>";
+  } else {
+    const im = f.num ? ' inputmode="decimal"' : "";
+    inner = '<input data-k="' + f.k + '" value="' + esc(val) + '" placeholder="' + esc(f.ph||"") + '"' + im + ">";
+  }
+  return '<div class="fld' + span + '"><label>' + esc(f.l) + "</label>" + inner + "</div>";
+}
+function renderEditor(){
+  const j = activeJob(); if(!j) return;
+  document.getElementById("secJob").innerHTML = JOB_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  renderEmails();
+  renderJobNav();
+  renderMapUI("edit");
+  document.getElementById("secTimes").innerHTML = MOVE_TIMES.map(f => fieldHTML(f, j[f.k])).join("");
+  document.getElementById("secVol").innerHTML = VOL_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  document.getElementById("secEtf1").innerHTML = ETF1_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  document.getElementById("secEtf2").innerHTML = ETF2_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  document.getElementById("secRate").innerHTML = RATE_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  j.asOf = nowStamp(); persist();
+  document.getElementById("secComments").innerHTML =
+    '<div class="fld"><label>Update info as of</label><div class="row">' +
+      '<input data-k="asOf" value="' + esc(j.asOf) + '" placeholder="6/5/26 1918">' +
+      '<button class="btn btn-sm" type="button" id="btnNow">Now</button></div></div>' +
+    '<div class="fld"><label>Additional comments</label>' +
+      '<textarea class="tall" data-k="comments" placeholder="ex: Completion update. More info to follow soonest available.">' + esc(j.comments) + "</textarea></div>";
+  document.getElementById("btnNow").onclick = ()=>{
+    const jj = activeJob(); jj.asOf = nowStamp(); jj.updatedAt = Date.now(); persist();
+    document.querySelector('[data-k="asOf"]').value = jj.asOf;
+  };
+  refreshCalcs();
+  const hasVal = (fields)=> fields.some(f => j[f.k] && String(j[f.k]).trim());
+  document.getElementById("dsecEtf1").open = hasVal(ETF1_FIELDS);
+  document.getElementById("dsecEtf2").open = hasVal(ETF2_FIELDS);
+  document.getElementById("dsecRate").open = hasVal(RATE_FIELDS);
+  ["dsecJob","dsecEmail","dsecTimes","dsecVol","dsecComments","dsecMap"].forEach(id => {
+    const el = document.getElementById(id); if(el) el.open = true;
+  });
+  requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
+}
+function renderEmails(){
+  const j = activeJob(); if(!j) return;
+  const box = document.getElementById("secEmails");
+  box.innerHTML = j.emails.map((em,i) =>
+    '<div class="emailblk">' +
+      '<div class="eb-h"><span class="eb-t">Email ' + (i+1) + "</span>" +
+        (j.emails.length > 1 ? '<button class="eb-del" type="button" data-edel="' + i + '" title="Remove email">&#215;</button>' : "") +
+      "</div>" +
+      '<div class="fld"><label>Customer Reference#</label>' +
+      '<input data-ei="' + i + '" data-ek="ref" value="' + esc(em.ref || "") + '" placeholder="ex: 7201957 — becomes REF# 7201957"></div>' +
+      '<div class="fld"><label>To</label><textarea class="grow" rows="1" data-ei="' + i + '" data-ek="to" placeholder="ex: ops@client.com; scheduler@client.com">' + esc(em.to) + "</textarea></div>" +
+      '<div class="fld"><label>CC</label><textarea class="grow" rows="1" data-ei="' + i + '" data-ek="cc" placeholder="ex: dispatch@bureauveritas.com">' + esc(em.cc) + "</textarea></div>" +
+      '<div class="fld"><label>Subject</label>' +
+        '<textarea class="grow" rows="1" data-ei="' + i + '" data-ek="subject" placeholder="Press Generate Subject Line below">' + esc(em.subject) + "</textarea>" +
+        '<button class="btn btn-sm" type="button" data-egen="' + i + '" style="margin-top:7px">&#8635;&nbsp; Generate Subject Line</button>' +
+      "</div>" +
+      '<div class="fld"><label>Relay tag (Power Automate)</label>' +
+      '<input data-ei="' + i + '" data-ek="relay" value="' + esc(em.relay || "") + '" placeholder="*BV* — added in front of the subject"></div>' +
+    "</div>"
+  ).join("");
+  box.querySelectorAll("[data-egen]").forEach(b => b.onclick = ()=>{
+    const jj = activeJob(); const i = +b.dataset.egen;
+    jj.emails[i].subject = buildSubject(jj, jj.emails[i].ref); jj.updatedAt = Date.now(); persist();
+    const ta = box.querySelector('textarea[data-ei="' + i + '"][data-ek="subject"]');
+    ta.value = jj.emails[i].subject; autosize(ta);
+  });
+  box.querySelectorAll("[data-edel]").forEach(b => b.onclick = ()=>{
+    const jj = activeJob(); const i = +b.dataset.edel;
+    if(!confirm("Remove Email " + (i+1) + "?")) return;
+    jj.emails.splice(i,1);
+    if(!jj.emails.length) jj.emails.push({to:"",cc:"",subject:""});
+    if(jj.sendIdx >= jj.emails.length) jj.sendIdx = 0;
+    jj.updatedAt = Date.now(); persist(); renderEmails();
+  });
+  requestAnimationFrame(()=>autosizeAll(box));
+}
+document.getElementById("btnAddEmail").onclick = ()=>{
+  const j = activeJob(); if(!j) return;
+  j.emails.push({to:"", cc:"", subject:"", ref:"", relay:"*BV*"});
+  j.updatedAt = Date.now(); persist(); renderEmails();
+  const tas = document.querySelectorAll('#secEmails textarea[data-ek="subject"]');
+  if(tas.length) tas[tas.length-1].focus();
+};
+document.getElementById("view-edit").addEventListener("input", (e)=>{
+  const j = activeJob(); if(!j) return;
+  if(e.target.classList && e.target.classList.contains("grow")) autosize(e.target);
+  const ds = e.target.dataset || {};
+  if(ds.ei != null && ds.ek){
+    j.emails[+ds.ei][ds.ek] = e.target.value;
+    j.updatedAt = Date.now(); persist(); return;
+  }
+  if(!ds.k) return;
+  j[ds.k] = e.target.value; j.updatedAt = Date.now();
+  persist(); refreshCalcs();
+});
+/* Reformat figures on leaving the field: volumes to 2dp with commas, VEF to 4dp */
+document.getElementById("view-edit").addEventListener("change", (e)=>{
+  const j = activeJob(); if(!j) return;
+  const k = e.target.dataset && e.target.dataset.k;
+  const ds = e.target.dataset || {};
+  if(ds.ei != null && ds.ek === "ref"){
+    const v = normRef(e.target.value);
+    e.target.value = v; j.emails[+ds.ei].ref = v; j.updatedAt = Date.now(); persist();
+    return;
+  }
+  if(!k || !(k in FMT_DP)) return;
+  const n = pNum(e.target.value);
+  if(n == null) return;
+  const dp = FMT_DP[k];
+  const formatted = n.toLocaleString("en-US",{minimumFractionDigits:dp, maximumFractionDigits:dp});
+  e.target.value = formatted;
+  j[k] = formatted; j.updatedAt = Date.now(); persist(); refreshCalcs();
+});
+/* Enter moves to the field below in Movement times (grid flows down, so DOM-next = below) */
+document.getElementById("secTimes").addEventListener("keydown", (e)=>{
+  if(e.key !== "Enter") return;
+  e.preventDefault();
+  const inputs = Array.from(document.querySelectorAll("#secTimes input"));
+  const i = inputs.indexOf(e.target);
+  if(i > -1 && i < inputs.length - 1) inputs[i+1].focus();
+});
+function refreshCalcs(){
+  const j = activeJob(); if(!j) return;
+  const v = computeVol(j);
+  document.getElementById("volCalc").innerHTML = "<table>" +
+    "<tr><td>Vsl/Bg diff (arr &minus; dpt)</td><td>" + fmtN(v.diff) + "</td></tr>" +
+    "<tr><td>Difference vs shore</td><td>" + fmtN(v.difference) + "</td></tr>" +
+    "<tr><td>% difference</td><td>" + fmtPct(v.pct) + "</td></tr>" +
+    (v.vef ? "<tr><td>Vsl/Bg w/VEF (&divide; " + v.vef + ")</td><td>" + fmtN(v.wDiff) + "</td></tr>" +
+      "<tr><td>Difference w/VEF</td><td>" + fmtN(v.wDifference) + "</td></tr>" +
+      "<tr><td>% difference w/VEF</td><td>" + fmtPct(v.wPct) + "</td></tr>" : "") +
+    "</table>";
+  const e1 = computeEtf1(j);
+  document.getElementById("etf1Calc").innerHTML = e1 ? "<table>" +
+    "<tr><td>Qty left</td><td>" + fmtN(e1.left) + "</td></tr>" +
+    "<tr><td>Hours</td><td>" + fmtN(e1.hours) + "</td></tr>" +
+    "<tr><td>Days</td><td>" + fmtN(e1.days,3) + "</td></tr>" +
+    '<tr><td>ETF</td><td class="big">' + (e1.etf?fmtDT(e1.etf):"set 'as of' date") + "</td></tr></table>"
+    : '<span style="color:var(--hint)">Enter total, loaded &amp; rate to calculate.</span>';
+  const e2 = computeEtf2(j);
+  document.getElementById("etf2Calc").innerHTML = e2 ? "<table>" +
+    "<tr><td>Hours</td><td>" + fmtN(e2.hours) + "</td></tr>" +
+    "<tr><td>Days</td><td>" + fmtN(e2.days,3) + "</td></tr>" +
+    '<tr><td>ETF</td><td class="big">' + (e2.etf?fmtDT(e2.etf):"set start date") + "</td></tr></table>"
+    : '<span style="color:var(--hint)">Enter quantity &amp; rate to calculate.</span>';
+  const r = computeRate(j);
+  document.getElementById("rateCalc").innerHTML = r ? "<table>" +
+    "<tr><td>Hours</td><td>" + fmtN(r.hours) + "</td></tr>" +
+    '<tr><td>Calculated rate / hr</td><td class="big">' + fmtN(r.rate) + "</td></tr></table>"
+    : '<span style="color:var(--hint)">Enter comm, comp &amp; quantity to calculate.</span>';
+}
+document.getElementById("btnDup").onclick = ()=>{
+  const j = activeJob(); if(!j) return;
+  const c = JSON.parse(JSON.stringify(j));
+  c.id = uid(); c.createdAt = Date.now(); c.updatedAt = Date.now();
+  c.status = "0.0 Working"; c.comments = ""; c.asOf = "";
+  state.jobs.push(c); persist();
+  openJob(c.id); toast("Job duplicated");
+};
+document.getElementById("btnDel").onclick = ()=>{
+  const j = activeJob(); if(!j) return;
+  if(!confirm("Delete " + (j.jobNo || "this job") + "? This cannot be undone.")) return;
+  state.jobs = state.jobs.filter(x => x.id !== j.id); persist();
+  renderJobs(); show("jobs"); toast("Job deleted");
+};
+
+/* ================= preview ================= */
+const TOGGLES = [
+  {k:"incVol", l:"Volume comparison"},
+  {k:"incEtf", l:"ETF"}
+];
+function renderPreview(){
+  const j = activeJob(); if(!j) return;
+  document.getElementById("prevToggles").innerHTML = TOGGLES.map(t =>
+    '<label class="toggle' + (j[t.k]?" on":"") + '"><input type="checkbox" data-t="' + t.k + '"' + (j[t.k]?" checked":"") + ">" + t.l + "</label>"
+  ).join("");
+  document.querySelectorAll("#prevToggles input").forEach(cb => cb.onchange = ()=>{
+    const jj = activeJob(); jj[cb.dataset.t] = cb.checked; jj.updatedAt = Date.now(); persist(); renderPreview();
+  });
+  /* email picker (only when more than one email) */
+  const pick = document.getElementById("emailPick");
+  if(j.emails.length > 1){
+    pick.style.display = "";
+    pick.innerHTML = j.emails.map((em,i)=>{
+      const label = "Email " + (i+1) + (em.subject ? ": " + em.subject : "");
+      return '<button class="epick' + (i === j.sendIdx ? " on" : "") + '" data-ep="' + i + '"><span>' + esc(label) + "</span></button>";
+    }).join("");
+    pick.querySelectorAll("[data-ep]").forEach(b => b.onclick = ()=>{
+      const jj = activeJob(); jj.sendIdx = +b.dataset.ep; jj.updatedAt = Date.now(); persist(); renderPreview();
+    });
+  } else {
+    pick.style.display = "none"; pick.innerHTML = "";
+  }
+  document.getElementById("docNode").innerHTML = docHTML(j);
+  document.getElementById("imgOut").innerHTML = "";
+  state.lastImageBlob = null;
+  renderMapUI("prev");
+  renderJobNav();
+  document.getElementById("prevHint").innerHTML =
+    "<b>Create image</b> renders the update above exactly as shown &mdash; like copying the print range. " +
+    "<b>Open email</b> starts a message with To / CC / Subject filled" +
+    (j.emails.length > 1 ? " from the selected email" : "") +
+    "; paste or attach the image, review, send.";
+}
+function kv(label, value){
+  return '<div class="doc-kv"><div class="k">' + esc(label) + '</div><div class="v">' + (esc(value) || "&mdash;") + "</div></div>";
+}
+function parseFreeTime(s){
+  s = String(s || "");
+  let m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})/);
+  let hh, mi;
+  if(m){ hh = +m[4]; mi = +m[5]; }
+  else {
+    m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{3,4})/);
+    if(!m) return null;
+    const hm = m[4].padStart(4, "0");
+    hh = +hm.slice(0,2); mi = +hm.slice(2);
+  }
+  let yy = +m[3]; if(yy < 100) yy += 2000;
+  const d = new Date(yy, +m[1]-1, +m[2], hh, mi);
+  return isNaN(d) ? null : d.getTime();
+}
+function timeRows(fields, j){
+  return fields.map((f,i) => ({f, i, v: j[f.k], t: parseFreeTime(j[f.k])}))
+    .filter(x => x.v && String(x.v).trim())
+    .sort((a,b)=>{
+      if(a.t == null && b.t == null) return a.i - b.i;
+      if(a.t == null) return 1;
+      if(b.t == null) return -1;
+      return (a.t - b.t) || (a.i - b.i);
+    })
+    .map(x => '<div class="tl"><b>' + esc(x.f.l) + ":</b><span>" + esc(x.v) + "</span></div>").join("");
+}
+function docHTML(j){
+  const v = computeVol(j);
+  const e1 = computeEtf1(j), e2 = computeEtf2(j);
+  const wvefTh = v.vef ? "<th>w/VEF (" + esc(j.vef) + ")</th>" : "";
+  let h = '<div class="doc-mast"><div><div class="dm-brand">BUREAU VERITAS</div><div class="dm-tag">Shaping a World of Trust</div></div>' +
+    '<div class="dm-right"><div class="dm-job">' + esc(j.jobNo || "") + '</div>' +
+    '<div class="dm-asof">' + (j.asOf ? "Update as of " + esc(j.asOf) : "") + "</div></div></div>";
+  h += '<div class="doc-sec"><div class="doc-grid">' +
+    kv("Vsl / Boat", j.vessel) + kv("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
+    kv("Port", j.port) + kv("S/T(s)", j.sts) + kv("VEF", j.vef) + kv("Status", j.status) +
+    "</div></div>";
+  const kt = timeRows(MOVE_TIMES, j);
+  if(kt) h += '<div class="doc-sec"><h3>' + DOC_TITLES.times + '</h3><div class="doc-times">' + kt + "</div></div>";
+  if(j.incVol && (v.shore != null || v.arr != null || v.dpt != null)){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.vol + '</h3><table class="doc-vol">' +
+      "<tr><th></th><th>Figures</th>" + wvefTh + "</tr>" +
+      '<tr class="hl"><td>Shore Figure</td><td>' + fmtN(v.shore) + "</td>" + (v.vef?"<td>"+fmtN(v.shore)+"</td>":"") + "</tr>" +
+      "<tr><td>Vsl/Bg Arrival</td><td>" + fmtN(v.arr) + "</td>" + (v.vef?"<td>"+fmtN(v.arr)+"</td>":"") + "</tr>" +
+      "<tr><td>Vsl/Bg Departure</td><td>" + fmtN(v.dpt) + "</td>" + (v.vef?"<td>"+fmtN(v.dpt)+"</td>":"") + "</tr>" +
+      '<tr class="hl"><td>Vsl/Bg Figure</td><td>' + fmtN(v.diff) + "</td>" + (v.vef?"<td>"+fmtN(v.wDiff)+"</td>":"") + "</tr>" +
+      "<tr><td>Movement Difference</td><td>" + fmtN(v.difference) + "</td>" + (v.vef?"<td>"+fmtN(v.wDifference)+"</td>":"") + "</tr>" +
+      '<tr class="hl"><td>% Difference</td><td>' + fmtPct(v.pct) + "</td>" + (v.vef?"<td>"+fmtPct(v.wPct)+"</td>":"") + "</tr>" +
+      "</table></div>";
+  }
+  if(j.incEtf && (e1 || e2)){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.etf + '</h3><div class="doc-etf">';
+    if(e1 && e1.etf) h += '<span><span class="k">ETF: </span><b>' + fmtDT(e1.etf) + "</b></span>" +
+      '<span><span class="k">Qty left: </span>' + fmtN(e1.left,0) + " @ " + fmtN(pNum(j.e1Rate),0) + "/hr</span>";
+    if(e2 && e2.etf) h += '<span><span class="k">ETF (fixed qty): </span><b>' + fmtDT(e2.etf) + "</b></span>";
+    h += "</div></div>";
+  }
+  if(j.comments && j.comments.trim()){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.comments + '</h3><div class="doc-comments">' + esc(j.comments) + "</div></div>";
+  }
+  if(j.mapImg){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.position + '</h3><img class="doc-mapimg" src="' + j.mapImg + '" alt="Vessel position map"></div>';
+  }
+  return h;
+}
+
+/* ================= shared map UI (entry + preview pages) ================= */
+function renderMapUI(scope){
+  const j = activeJob(); if(!j) return;
+  const card = document.getElementById(scope === "edit" ? "editMapCard" : "mapCard");
+  const body = document.getElementById(scope === "edit" ? "editMapBody" : "mapBody");
+  const ctl  = document.getElementById(scope === "edit" ? "editMapCtl" : "mapLink");
+  const ids = vfIds(j.boatLink);
+  if(!ids && !(j.boatLink && j.boatLink.trim())){ card.style.display = "none"; return; }
+  card.style.display = "";
+  if(!ids){
+    body.innerHTML = "";
+    ctl.innerHTML = '<span style="color:var(--hint)">Couldn\u2019t read an MMSI or IMO from the boat link. Paste a link like https://www.vesselfinder.com/?imo=9467794 or ?mmsi=367562810.</span>';
+    return;
+  }
+  const live = (scope === "edit");
+  body.innerHTML = live ? vfEmbed(ids) : "";
+  const canPaste = !!(navigator.clipboard && navigator.clipboard.read);
+  const canCapture = live && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  ctl.innerHTML =
+    '<a href="' + esc(j.boatLink) + '" target="_blank" rel="noopener">Open in VesselFinder &#8599;</a>' +
+    '<span style="color:var(--hint)"> &nbsp;&middot;&nbsp; ' + (ids.imo ? "IMO " + esc(ids.imo) : "MMSI " + esc(ids.mmsi)) + "</span>" +
+    (j.mapImg
+      ? '<div class="hintline" style="color:#0F6E4A">Map snapshot added &#10003; &mdash; it appears below the comments in the update image.</div>'
+      : '<div class="hintline">Get the map into the emailed image: ' +
+        (canCapture ? "<b>Capture map</b> grabs it in one click (choose \u201cThis Tab\u201d when asked)." :
+        (live ? "screenshot the live map, then <b>Add map snapshot</b> from your photos."
+              : "screenshot the live map on the entry page, then <b>Add map snapshot</b> here.")) + "</div>") +
+    '<div class="snaprow">' +
+      (live ? '<button class="btn btn-sm" data-mapact="refresh">Refresh map</button>' : "") +
+      (canCapture ? '<button class="btn btn-sm btn-navy" data-mapact="capture">Capture map</button>' : "") +
+      '<button class="btn btn-sm' + (canCapture ? "" : " btn-navy") + '" data-mapact="add">' + (j.mapImg ? "Replace snapshot" : "Add map snapshot") + "</button>" +
+      (canPaste ? '<button class="btn btn-sm" data-mapact="paste">Paste</button>' : "") +
+      (j.mapImg ? '<button class="btn btn-sm" style="color:var(--red); border-color:#F0C4CA" data-mapact="remove">Remove</button>' : "") +
+    "</div>";
+  ctl.querySelectorAll("[data-mapact]").forEach(b => b.onclick = ()=> mapAction(b.dataset.mapact, scope));
+}
+function mapAction(act, scope){
+  const j = activeJob(); if(!j) return;
+  if(act === "refresh"){ renderMapUI(scope); toast("Map refreshed"); }
+  else if(act === "add"){ document.getElementById("mapFile").click(); }
+  else if(act === "paste"){ pasteSnapshot(); }
+  else if(act === "remove"){ j.mapImg = ""; j.updatedAt = Date.now(); persist(); refreshMapViews(); }
+  else if(act === "capture"){ captureMap(scope); }
+}
+function refreshMapViews(){
+  if(state.view === "edit") renderMapUI("edit");
+  else if(state.view === "preview") renderPreview();
+}
+const sleep = (ms)=> new Promise(r => setTimeout(r, ms));
+async function captureMap(scope){
+  const container = document.getElementById(scope === "edit" ? "editMapBody" : "mapBody");
+  const frame = container.querySelector(".mapframe");
+  if(!frame) return;
+  frame.scrollIntoView({block:"center"});
+  await sleep(350);
+  let stream = null;
+  try{
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true, audio: false,
+      preferCurrentTab: true, selfBrowserSurface: "include"
+    });
+    const video = document.createElement("video");
+    video.srcObject = stream; video.muted = true;
+    await video.play();
+    await sleep(350);
+    const scale = video.videoWidth / window.innerWidth;
+    const r = frame.getBoundingClientRect();
+    const c = document.createElement("canvas");
+    c.width = Math.round(r.width * scale);
+    c.height = Math.round(r.height * scale);
+    c.getContext("2d").drawImage(video,
+      Math.round(r.left * scale), Math.round(r.top * scale), c.width, c.height,
+      0, 0, c.width, c.height);
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    const blob = await new Promise(res => c.toBlob(res, "image/png"));
+    if(blob) setSnapshot(blob);
+  } catch(err){
+    if(stream) stream.getTracks().forEach(t => t.stop());
+    if(err && err.name === "NotAllowedError") toast("Capture cancelled");
+    else toast("Capture failed — screenshot and use Add map snapshot instead");
+  }
+}
+
+/* ================= quick job nav (rail + strip) ================= */
+function navJobs(){
+  return state.jobs.slice().sort((a,b)=>{
+    const sa = parseFloat(a.status), sb = parseFloat(b.status);
+    const na = isNaN(sa) ? 99 : sa, nb = isNaN(sb) ? 99 : sb;
+    if(na !== nb) return na - nb;
+    return (b.updatedAt||0) - (a.updatedAt||0);
+  });
+}
+function statusDot(status){
+  const code = String(status||"").split(" ")[0];
+  const c = STATUS_COLORS[code] || {bg:"#ECEFF4"};
+  return '<span class="jdot" style="background:' + c.bg + '"></span>';
+}
+function renderJobNav(){
+  const jobs = navJobs();
+  const cur = state.activeId;
+  /* mobile strip */
+  const strip = document.getElementById("jobStrip");
+  strip.innerHTML = jobs.map(j =>
+    '<button class="jchip' + (j.id === cur ? " on" : "") + '" data-nav="' + j.id + '">' +
+      statusDot(j.status) + esc(j.vessel || j.jobNo || "Untitled") + "</button>"
+  ).join("") + '<button class="jchip" data-navnew="1">&#43; New</button>';
+  /* desktop rail */
+  const rail = document.getElementById("jobRail");
+  rail.innerHTML = '<div class="card"><div class="card-h"><h2>Jobs</h2></div><div>' +
+    jobs.map(j =>
+      '<button class="railitem' + (j.id === cur ? " on" : "") + '" data-nav="' + j.id + '">' +
+        statusDot(j.status) +
+        '<span class="ri-t"><span class="ri-v">' + esc(j.vessel || j.jobNo || "Untitled") + '</span><br>' +
+        '<span class="ri-j">' + esc(j.jobNo || "") + "</span></span>" +
+      "</button>"
+    ).join("") +
+    '<button class="railitem" data-navnew="1"><span class="jdot" style="background:#fff"></span><span class="ri-t"><span class="ri-v">&#43; New job</span></span></button>' +
+  "</div></div>";
+  document.querySelectorAll("[data-nav]").forEach(b => b.onclick = ()=>{
+    if(b.dataset.nav !== state.activeId) openJob(b.dataset.nav);
+  });
+  document.querySelectorAll("[data-navnew]").forEach(b => b.onclick = newJob);
+}
+
+/* ================= map snapshot ================= */
+function blobToMapImg(blob){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = ()=>{
+      const maxW = 1100;
+      const w = Math.min(maxW, img.naturalWidth);
+      const h = Math.round(img.naturalHeight * (w / img.naturalWidth));
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+async function setSnapshot(blob){
+  const j = activeJob(); if(!j) return;
+  try{
+    j.mapImg = await blobToMapImg(blob);
+    j.updatedAt = Date.now(); persist(); refreshMapViews();
+    toast("Snapshot added — it's now part of the update image");
+  } catch(e){ toast("Couldn't read that image"); }
+}
+document.getElementById("mapFile").addEventListener("change", (e)=>{
+  const f = e.target.files[0];
+  if(f) setSnapshot(f);
+  e.target.value = "";
+});
+async function pasteSnapshot(){
+  try{
+    const items = await navigator.clipboard.read();
+    for(const it of items){
+      const type = it.types.find(t => t.startsWith("image/"));
+      if(type){ setSnapshot(await it.getType(type)); return; }
+    }
+    toast("No image on the clipboard — screenshot the map first");
+  } catch(e){ toast("Clipboard blocked by browser — use Add map snapshot instead"); }
+}
+
+/* ================= image generation ================= */
+async function generateImage(){
+  const j = activeJob(); if(!j) return;
+  if(typeof html2canvas === "undefined"){ toast("Image library not loaded — check internet connection"); return; }
+  toast("Creating image…");
+  const holder = document.createElement("div");
+  holder.style.cssText = "position:absolute; left:-10000px; top:0; width:720px; background:#fff;";
+  const clone = document.createElement("div");
+  clone.innerHTML = docHTML(j);
+  holder.appendChild(clone);
+  document.body.appendChild(holder);
+  try{
+    const canvas = await html2canvas(holder, {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false});
+    const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+    state.lastImageBlob = blob;
+    const url = URL.createObjectURL(blob);
+    const canShare = !!(navigator.canShare && navigator.canShare({files:[new File([blob],"u.png",{type:"image/png"})]}));
+    const canCopy = !!(navigator.clipboard && window.ClipboardItem);
+    document.getElementById("imgOut").innerHTML =
+      '<img src="' + url + '" alt="Job update image">' +
+      '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">' +
+      (canCopy ? '<button class="btn btn-sm" id="imgCopy">Copy image</button>' : "") +
+      (canShare ? '<button class="btn btn-sm btn-navy" id="imgShare">Share &rarr; Mail</button>' : "") +
+      '<button class="btn btn-sm" id="imgSave">Save PNG</button></div>';
+    if(canCopy) document.getElementById("imgCopy").onclick = copyImage;
+    if(canShare) document.getElementById("imgShare").onclick = shareImage;
+    document.getElementById("imgSave").onclick = saveImage;
+    toast("Image ready — copy, share or save it, then open your email");
+  } catch(err){
+    toast("Image failed: " + (err && err.message ? err.message : err));
+  } finally {
+    document.body.removeChild(holder);
+  }
+}
+async function copyImage(){
+  try{
+    await navigator.clipboard.write([new ClipboardItem({"image/png": state.lastImageBlob})]);
+    toast("Copied — paste into your email body");
+  } catch(e){ toast("Copy blocked by browser — use Save PNG instead"); }
+}
+async function shareImage(){
+  const j = activeJob();
+  const file = new File([state.lastImageBlob], (j.jobNo || "bv-update") + ".png", {type:"image/png"});
+  try{ await navigator.share({files:[file], title: selEmail(j).subject || "BV Update"}); }
+  catch(e){ /* user cancelled */ }
+}
+function saveImage(){
+  const j = activeJob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(state.lastImageBlob);
+  a.download = (j.jobNo || "bv-update") + "_update.png";
+  a.click();
+}
+
+/* ================= email ================= */
+function selEmail(j){
+  const i = (typeof j.sendIdx === "number" && j.sendIdx < j.emails.length) ? j.sendIdx : 0;
+  return j.emails[i] || {to:"", cc:"", subject:""};
+}
+function openEmail(){
+  const j = activeJob(); if(!j) return;
+  const em = selEmail(j);
+  let subj = (em.subject && em.subject.trim()) || buildSubject(j, em.ref);
+  if(em.relay && em.relay.trim()) subj = em.relay.trim() + " " + subj;
+  if(!em.to && !subj){ toast("Add To and a subject in the Email section first"); return; }
+  let href = "mailto:" + encodeURIComponent(em.to || "");
+  const q = [];
+  if(em.cc) q.push("cc=" + encodeURIComponent(em.cc));
+  if(subj) q.push("subject=" + encodeURIComponent(subj));
+  const asOf = (j.asOf && j.asOf.trim()) || nowStamp();
+  q.push("body=" + encodeURIComponent("Please see below update info as of " + asOf + " (local central time zone)."));
+  href += "?" + q.join("&");
+  window.location.href = href;
+}
+
+/* ================= export / import ================= */
+document.getElementById("miExport").onclick = ()=>{
+  hideMenu();
+  const blob = new Blob([JSON.stringify({v:3, exported: new Date().toISOString(), jobs: state.jobs}, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "bv_jobs_backup.json";
+  a.click();
+  toast("Backup downloaded — save it to OneDrive");
+};
+document.getElementById("miImport").onclick = ()=>{ hideMenu(); document.getElementById("importFile").click(); };
+document.getElementById("importFile").addEventListener("change", (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const data = JSON.parse(rd.result);
+      const incoming = Array.isArray(data) ? data : (data.jobs || []);
+      if(!Array.isArray(incoming)) throw new Error("bad file");
+      let added = 0, updated = 0;
+      incoming.forEach(inJ => {
+        if(!inJ || !inJ.id) return;
+        const ex = state.jobs.find(x => x.id === inJ.id);
+        if(!ex){ state.jobs.push(inJ); added++; }
+        else if((inJ.updatedAt||0) > (ex.updatedAt||0)){ Object.assign(ex, inJ); updated++; }
+      });
+      state.jobs.forEach(migrate);
+      persist(); renderJobs();
+      toast("Import done — " + added + " added, " + updated + " updated");
+    } catch(err){ toast("Import failed — not a valid backup file"); }
+    e.target.value = "";
+  };
+  rd.readAsText(f);
+});
+document.getElementById("miNew").onclick = ()=>{ hideMenu(); newJob(); };
+
+/* ================= floating calculator ================= */
+const calcFab = document.getElementById("calcFab");
+const calcPanel = document.getElementById("calcPanel");
+const calcIn = document.getElementById("calcIn");
+const calcAns = document.getElementById("calcAns");
+calcFab.onclick = ()=>{
+  const open = calcPanel.style.display === "block";
+  calcPanel.style.display = open ? "none" : "block";
+  if(!open) calcIn.focus();
+};
+function calcSanitize(s){ return String(s).replace(/,/g,"").replace(/[^0-9+\-*/(). ]/g,""); }
+function calcEquals(){
+  const expr = calcSanitize(calcIn.value).trim();
+  if(!expr) return;
+  try{
+    const val = Function('"use strict";return(' + expr + ')')();
+    if(typeof val !== "number" || !isFinite(val)) throw new Error("bad");
+    const clean = parseFloat(val.toFixed(8));
+    calcAns.textContent = expr + " = " + clean.toLocaleString("en-US",{maximumFractionDigits:8});
+    calcIn.value = String(clean);
+  } catch(e){
+    calcAns.textContent = "Invalid expression";
+  }
+}
+document.getElementById("calcGrid").addEventListener("click", (e)=>{
+  const b = e.target.closest("[data-cb]");
+  if(!b) return;
+  const v = b.dataset.cb;
+  if(v === "C"){ calcIn.value = ""; calcAns.textContent = ""; }
+  else if(v === "back"){ calcIn.value = calcIn.value.slice(0,-1); }
+  else if(v === "="){ calcEquals(); }
+  else { calcIn.value += v; }
+  calcIn.focus();
+});
+calcIn.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter" || e.key === "="){ e.preventDefault(); calcEquals(); }
+  else if(e.key === "Escape"){ calcPanel.style.display = "none"; }
+});
+calcIn.addEventListener("input", ()=>{ calcIn.value = calcIn.value.replace(/[^0-9+\-*/(). ,]/g,""); });
+
+/* ================= storage meter ================= */
+function fmtSize(bytes){
+  const mb = bytes / 1048576;
+  return mb >= 1024 ? (mb/1024).toFixed(1) + " GB" : mb.toFixed(2) + " MB";
+}
+function renderMeter(usedBytes, quotaBytes){
+  const pct = quotaBytes ? Math.min(100, usedBytes / quotaBytes * 100) : 0;
+  const barColor = pct > 80 ? "var(--red)" : "var(--navy)";
+  document.getElementById("storageMeter").innerHTML =
+    "Job data: <b>" + fmtSize(usedBytes) + "</b>" + (quotaBytes ? " of " + fmtSize(quotaBytes) + " available" : " of ~5 MB") +
+    '<div style="height:6px; background:#EDF0F7; border-radius:4px; margin-top:6px; overflow:hidden;">' +
+    '<div style="height:100%; width:' + Math.max(pct, 1).toFixed(1) + '%; background:' + barColor + '; border-radius:4px;"></div></div>' +
+    (pct > 80 ? '<div style="color:var(--red); margin-top:5px;">Getting full — remove old map snapshots or delete completed jobs.</div>' : "");
+}
+function updateStorageMeter(){
+  const jobBytes = JSON.stringify(state.jobs).length;
+  if(useIDB && navigator.storage && navigator.storage.estimate){
+    navigator.storage.estimate()
+      .then(est => renderMeter(jobBytes, est.quota || 0))
+      .catch(()=> renderMeter(jobBytes, 0));
+  } else {
+    renderMeter(jobBytes, 5 * 1048576);
+  }
+}
+/* menu */
+const menuPop = document.getElementById("menuPop");
+document.getElementById("btnMenu").onclick = (e)=>{
+  e.stopPropagation();
+  const opening = menuPop.style.display !== "block";
+  menuPop.style.display = opening ? "block" : "none";
+  if(opening) updateStorageMeter();
+};
+function hideMenu(){ menuPop.style.display = "none"; }
+document.addEventListener("click", (e)=>{ if(!menuPop.contains(e.target)) hideMenu(); });
+
+/* ================= boot ================= */
+loadState().then(()=>{
+  renderJobs();
+  show("jobs");
+  updateTopMeter();
+});
+</script>
+</body>
+</html>
