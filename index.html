@@ -10,6 +10,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --navy:#101E42; --deep:#1B2C5E; --red:#D6152C;
@@ -188,6 +191,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
     <div class="spacer"></div>
     <button class="backbtn" id="btnHome" style="display:none">Job Board</button>
     <button class="backbtn" id="btnMenu">&#8942;</button>
+    <span id="syncDot" title="Sync off" style="font-size:13px; color:#6C7A99; margin-left:4px; cursor:pointer;">&#9679;</span>
     <span id="topMeter" title="Job data size" style="font-size:11px; color:#9FB0D8; margin-left:2px; white-space:nowrap; font-variant-numeric:tabular-nums;"></span>
   </div>
 </div>
@@ -195,6 +199,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
   <button id="miExport">&#8681;&nbsp; Export jobs (JSON backup)</button>
   <button id="miImport">&#8683;&nbsp; Import jobs from backup</button>
   <button id="miNew">&#43;&nbsp; New job</button>
+  <button id="miSync">&#9729;&nbsp; Sync settings</button>
   <div id="storageMeter" style="padding:10px 16px 12px; font-size:12px; color:var(--label); border-top:1px solid #F0F3F9; cursor:default;"></div>
 </div>
 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
@@ -335,6 +340,26 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 </div>
 <input type="file" id="mapFile" accept="image/*" style="display:none">
 
+<!-- sync settings modal -->
+<div id="syncOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
+  <div class="card" style="max-width:520px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
+    <div class="card-h"><h2>Live sync (Firebase)</h2><span class="tag" id="syncStatus"></span></div>
+    <div class="card-b">
+      <div class="fld" style="margin-bottom:10px"><label>Firebase config (paste the whole snippet)</label>
+        <textarea id="syncCfgIn" style="min-height:120px; resize:vertical; font-family:monospace; font-size:12.5px;" placeholder='const firebaseConfig = { apiKey: "...", projectId: "...", ... };'></textarea></div>
+      <div class="grid2">
+        <div class="fld"><label>Email</label><input id="syncEmail" type="email" autocomplete="username"></div>
+        <div class="fld"><label>Password</label><input id="syncPw" type="password" autocomplete="current-password"></div>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn btn-sm btn-navy" id="syncConnect">Connect &amp; sign in</button>
+        <button class="btn btn-sm" id="syncOff" style="color:var(--red); border-color:#F0C4CA;">Disconnect</button>
+        <button class="btn btn-sm" id="syncClose" style="margin-left:auto">Close</button>
+      </div>
+      <p class="hintline">Once connected, every device signed in with this account shares one live Job Board. Green dot in the header = live. Password is never stored by the app; the sign-in session is kept by the browser.</p>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -421,6 +446,7 @@ function persist(){
     try{ localStorage.setItem(LS_KEY, data); flashSaved(); updateTopMeter(); }
     catch(e){ toast("Could not save — storage full"); }
   }
+  if(typeof schedulePush === "function") schedulePush();
 }
 let savedTimer = null;
 function flashSaved(){
@@ -751,6 +777,7 @@ function renderPurge(){
     if(!confirm("Delete " + done.length + " completed job" + (done.length>1?"s":"") + "? Tip: Export a backup first (menu \u22EE) — this cannot be undone.")) return;
     state.jobs = state.jobs.filter(j => !String(j.status||"").startsWith("8.0"));
     persist(); renderJobs();
+    cloudDelete(done.map(j => j.id));
     toast(done.length + " completed job" + (done.length>1?"s":"") + " deleted");
   };
 }
@@ -939,6 +966,7 @@ document.getElementById("btnDel").onclick = ()=>{
   const j = activeJob(); if(!j) return;
   if(!confirm("Delete " + (j.jobNo || "this job") + "? This cannot be undone.")) return;
   state.jobs = state.jobs.filter(x => x.id !== j.id); persist();
+  cloudDelete([j.id]);
   renderJobs(); show("jobs"); toast("Job deleted");
 };
 
@@ -1392,6 +1420,144 @@ function updateStorageMeter(){
     renderMeter(jobBytes, 5 * 1048576);
   }
 }
+/* ================= live sync (Firebase Firestore) ================= */
+const SYNC_CFG_KEY = "bv_sync_cfg";
+const fb = { on:false, db:null, uid:null, unsub:null, timer:null, lastPushed:{} };
+function setSyncDot(mode){
+  const el = document.getElementById("syncDot");
+  if(!el) return;
+  if(mode === "on"){ el.style.color = "#35C26B"; el.title = "Sync live"; }
+  else if(mode === "err"){ el.style.color = "var(--red)"; el.title = "Sync error — tap for settings"; }
+  else { el.style.color = "#6C7A99"; el.title = "Sync off — tap to set up"; }
+}
+function getSyncCfg(){ try{ return JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || "null"); }catch(e){ return null; } }
+function parseFbConfig(text){
+  const m = String(text).match(/\{[\s\S]*\}/);
+  if(!m) throw new Error("No config object found in the pasted text");
+  const obj = Function('"use strict";return (' + m[0] + ')')();
+  if(!obj.apiKey || !obj.projectId) throw new Error("Config is missing apiKey or projectId");
+  return obj;
+}
+function persistLocal(){
+  const data = JSON.stringify(state.jobs);
+  if(useIDB){ idbSet("jobs", data).catch(()=>{}); }
+  else { try{ localStorage.setItem(LS_KEY, data); }catch(e){} }
+  updateTopMeter();
+}
+function refreshAfterRemote(){
+  if(state.view === "jobs") renderJobs();
+  else renderJobNav();
+}
+function startSync(){
+  const user = firebase.auth().currentUser;
+  if(!user) return;
+  fb.uid = user.uid;
+  fb.db = firebase.firestore();
+  try{ fb.db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+  const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
+  if(fb.unsub) fb.unsub();
+  fb.unsub = col.onSnapshot((snap)=>{
+    let changed = false;
+    snap.docChanges().forEach(ch => {
+      const id = ch.doc.id;
+      if(ch.type === "removed"){
+        const i = state.jobs.findIndex(j => j.id === id);
+        if(i > -1){ state.jobs.splice(i,1); changed = true; }
+        return;
+      }
+      const d = ch.doc.data();
+      const ex = state.jobs.find(j => j.id === id);
+      if(!ex){ state.jobs.push(d); fb.lastPushed[id] = d.updatedAt; changed = true; }
+      else if((d.updatedAt||0) > (ex.updatedAt||0)){ Object.assign(ex, d); fb.lastPushed[id] = d.updatedAt; changed = true; }
+    });
+    if(changed){
+      state.jobs.forEach(migrate);
+      persistLocal();
+      refreshAfterRemote();
+    }
+  }, ()=> setSyncDot("err"));
+  fb.on = true; setSyncDot("on");
+  schedulePush();
+}
+function schedulePush(){
+  if(!fb.on) return;
+  clearTimeout(fb.timer);
+  fb.timer = setTimeout(pushChanges, 900);
+}
+function pushChanges(){
+  if(!fb.on || !fb.db) return;
+  const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
+  state.jobs.forEach(j => {
+    if(fb.lastPushed[j.id] === j.updatedAt) return;
+    const clean = JSON.parse(JSON.stringify(j));
+    if(JSON.stringify(clean).length > 900000){
+      toast("Job " + (j.jobNo||"") + " too large to sync — replace its map snapshot with a smaller one");
+      return;
+    }
+    col.doc(j.id).set(clean)
+      .then(()=>{ fb.lastPushed[j.id] = j.updatedAt; setSyncDot("on"); })
+      .catch(()=> setSyncDot("err"));
+  });
+}
+function cloudDelete(ids){
+  if(!fb.on || !fb.db) return;
+  const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
+  ids.forEach(id => { delete fb.lastPushed[id]; col.doc(id).delete().catch(()=>{}); });
+}
+/* sync settings UI */
+const syncOverlay = document.getElementById("syncOverlay");
+function openSync(){
+  hideMenu();
+  const cfg = getSyncCfg();
+  if(cfg && cfg.email) document.getElementById("syncEmail").value = cfg.email;
+  document.getElementById("syncStatus").textContent = fb.on ? "connected" : "not connected";
+  syncOverlay.style.display = "block";
+}
+document.getElementById("miSync").onclick = openSync;
+document.getElementById("syncDot").onclick = openSync;
+document.getElementById("syncClose").onclick = ()=>{ syncOverlay.style.display = "none"; };
+document.getElementById("syncOff").onclick = ()=>{
+  if(fb.unsub) fb.unsub();
+  fb.on = false; fb.unsub = null;
+  try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
+  localStorage.removeItem(SYNC_CFG_KEY);
+  setSyncDot("off");
+  document.getElementById("syncStatus").textContent = "not connected";
+  toast("Sync disconnected — this device keeps its local copy");
+};
+document.getElementById("syncConnect").onclick = async ()=>{
+  const st = document.getElementById("syncStatus");
+  try{
+    if(typeof firebase === "undefined") throw new Error("Firebase library didn't load — check internet");
+    st.textContent = "connecting…";
+    const saved = getSyncCfg();
+    const txt = document.getElementById("syncCfgIn").value.trim();
+    const cfg = txt ? parseFbConfig(txt) : (saved && saved.cfg);
+    if(!cfg) throw new Error("Paste your Firebase config first");
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    const email = document.getElementById("syncEmail").value.trim();
+    const pw = document.getElementById("syncPw").value;
+    if(!email || !pw) throw new Error("Enter email and password");
+    await firebase.auth().signInWithEmailAndPassword(email, pw);
+    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({cfg, email}));
+    document.getElementById("syncPw").value = "";
+    startSync();
+    st.textContent = "connected";
+    toast("Live sync on — this device now shares the Job Board");
+  } catch(err){
+    st.textContent = "error";
+    toast("Sync: " + (err && err.message ? err.message : err));
+  }
+};
+function bootSync(){
+  const saved = getSyncCfg();
+  if(!saved || !saved.cfg || typeof firebase === "undefined") { setSyncDot("off"); return; }
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(saved.cfg);
+    firebase.auth().onAuthStateChanged(u => { if(u) startSync(); else setSyncDot("off"); });
+  } catch(e){ setSyncDot("off"); }
+}
+
 /* menu */
 const menuPop = document.getElementById("menuPop");
 document.getElementById("btnMenu").onclick = (e)=>{
@@ -1408,6 +1574,7 @@ loadState().then(()=>{
   renderJobs();
   show("jobs");
   updateTopMeter();
+  bootSync();
 });
 </script>
 </body>
