@@ -21,6 +21,7 @@
 }
 *{box-sizing:border-box; margin:0}
 html{-webkit-text-size-adjust:100%}
+html, body{overflow-x:clip;}
 body{font-family:'Inter',system-ui,sans-serif; background:var(--paper); color:var(--ink); font-size:15px; line-height:1.5;}
 .wrap{max-width:780px; margin:0 auto; padding:0 14px 90px;}
 /* ---------- top bar ---------- */
@@ -44,11 +45,11 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .card-h h2{font-family:'Archivo',sans-serif; font-size:13.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--deep);}
 .card-h .tag{margin-left:auto; font-size:11px; color:var(--hint); text-align:right;}
 .card-b{padding:14px 16px 16px;}
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
+.grid2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px;}
 .grid1{display:grid; grid-template-columns:1fr; gap:10px;}
-.grid-times{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
+.grid-times{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px;}
 .fld label{display:block; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--label); margin-bottom:4px;}
-.fld input,.fld select,.fld textarea{width:100%; border:1px solid var(--line); border-radius:9px; background:#fff; padding:10px 11px; font-size:15px; font-family:'Inter'; color:var(--ink); font-variant-numeric:tabular-nums;}
+.fld input,.fld select,.fld textarea{width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; background:#fff; padding:10px 11px; font-size:15px; font-family:'Inter'; color:var(--ink); font-variant-numeric:tabular-nums;}
 .fld input::placeholder,.fld textarea::placeholder{color:#B7C1D6; font-style:italic; opacity:1;}
 .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none; border-color:var(--deep); box-shadow:0 0 0 3px rgba(27,44,94,.12);}
 textarea.grow{min-height:0; resize:none; overflow:hidden; line-height:1.5;}
@@ -129,10 +130,10 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .epick.on{border-color:var(--red); color:var(--red); background:#FCEBED; font-weight:600;}
 #view-edit .card{overflow:visible;}
 #view-edit .card-h{position:sticky; top:calc(env(safe-area-inset-top,0px) + 58px); z-index:20; border-radius:13px 13px 0 0;}
-details.dsec > summary{list-style:none; cursor:pointer;}
-details.dsec > summary::-webkit-details-marker{display:none;}
+.dsec > .card-h{cursor:pointer; user-select:none; -webkit-user-select:none;}
+.dsec.closed > *:not(.card-h){display:none;}
 .chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
-details.dsec:not([open]) .chev{transform:rotate(-90deg);}
+.dsec.closed .chev{transform:rotate(-90deg);}
 /* misc */
 .hintline{font-size:12.5px; color:var(--hint); margin-top:10px; line-height:1.5;}
 .linkline{font-size:13px; margin-top:10px; word-break:break-all;}
@@ -224,69 +225,69 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
   <div class="view" id="view-edit">
     <div id="jobStrip"></div>
     <div class="card" style="margin-top:6px">
-      <details class="dsec" id="dsecJob" open>
-      <summary class="card-h"><h2>Job information</h2><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></summary>
+      <div class="dsec" id="dsecJob">
+      <div class="card-h"><h2>Job information</h2><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secJob"></div></div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecEmail" open>
-      <summary class="card-h"><h2>Email</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecEmail">
+      <div class="card-h"><h2>Email</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b">
         <div id="secEmails"></div>
         <button class="btn btn-sm btn-navy" type="button" id="btnAddEmail">&#43; Add email</button>
         <p class="hintline">&#8635; auto-generates the subject from job info &mdash; add your APD# after.</p>
       </div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecTimes" open>
-      <summary class="card-h"><h2>Movement times</h2><span class="tag">Auto-date:&nbsp;<b id="autoDateVal"></b></span><span class="chev">&#9662;</span></summary>
+      <div class="dsec" id="dsecTimes">
+      <div class="card-h"><h2>Movement times</h2><span class="tag">Auto-date:&nbsp;<b id="autoDateVal"></b></span><span class="chev">&#9662;</span></div>
       <div class="card-b">
       <div id="vslTimesRow" style="margin-bottom:12px"></div>
       <div class="grid-times" id="secTimes"></div>
       <p class="hintline">Type a full date-time once (e.g. <b>6/2/26 1418</b>) &mdash; after that just type the time (<b>1510</b>) and the auto-date fills in when you move on. Typing a new full date-time updates the auto-date. Only filled times appear in the update.</p></div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecVol" open>
-      <summary class="card-h"><h2>Volume comparison</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecVol">
+      <div class="card-h"><h2>Volume comparison</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b">
         <div class="grid2" id="secVol"></div>
         <div class="calc" id="volCalc"></div>
       </div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecEtf1">
-      <summary class="card-h"><h2>ETF &mdash; current quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecEtf1">
+      <div class="card-h"><h2>ETF &mdash; current quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secEtf1"></div><div class="calc" id="etf1Calc"></div></div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecEtf2">
-      <summary class="card-h"><h2>ETF &mdash; fixed quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecEtf2">
+      <div class="card-h"><h2>ETF &mdash; fixed quantity</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secEtf2"></div><div class="calc" id="etf2Calc"></div></div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecRate">
-      <summary class="card-h"><h2>Load / discharge rate</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecRate">
+      <div class="card-h"><h2>Load / discharge rate</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secRate"></div><div class="calc" id="rateCalc"></div></div>
-      </details>
+      </div>
     </div>
     <div class="card">
-      <details class="dsec" id="dsecComments" open>
-      <summary class="card-h"><h2>Operational Comments</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecComments">
+      <div class="card-h"><h2>Operational Comments</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div class="card-b"><div class="grid1" id="secComments"></div></div>
-      </details>
+      </div>
     </div>
     <div class="card" id="editMapCard" style="display:none">
-      <details class="dsec" id="dsecMap" open>
-      <summary class="card-h"><h2>Live vessel map</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <div class="dsec" id="dsecMap">
+      <div class="card-h"><h2>Live vessel map</h2><span class="chev" style="margin-left:auto">&#9662;</span></div>
       <div id="editMapBody"></div>
       <div class="card-b" style="padding-top:10px"><div class="linkline" id="editMapCtl"></div></div>
-      </details>
+      </div>
     </div>
     <div style="margin-top:16px; display:flex; gap:9px;">
       <button class="btn btn-sm" id="btnDup">Duplicate job</button>
@@ -374,7 +375,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 
 <script>
 "use strict";
-const APP_VERSION = "v25";
+const APP_VERSION = "v27";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -916,11 +917,11 @@ function renderEditor(){
   };
   refreshCalcs();
   const hasVal = (fields)=> fields.some(f => j[f.k] && String(j[f.k]).trim());
-  document.getElementById("dsecEtf1").open = hasVal(ETF1_FIELDS);
-  document.getElementById("dsecEtf2").open = hasVal(ETF2_FIELDS);
-  document.getElementById("dsecRate").open = hasVal(RATE_FIELDS);
+  document.getElementById("dsecEtf1").classList.toggle("closed", !hasVal(ETF1_FIELDS));
+  document.getElementById("dsecEtf2").classList.toggle("closed", !hasVal(ETF2_FIELDS));
+  document.getElementById("dsecRate").classList.toggle("closed", !hasVal(RATE_FIELDS));
   ["dsecJob","dsecEmail","dsecTimes","dsecVol","dsecComments","dsecMap"].forEach(id => {
-    const el = document.getElementById(id); if(el) el.open = true;
+    const el = document.getElementById(id); if(el) el.classList.remove("closed");
   });
   requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
 }
@@ -1779,6 +1780,12 @@ function hideMenu(){ menuPop.style.display = "none"; }
 document.addEventListener("click", (e)=>{ if(!menuPop.contains(e.target)) hideMenu(); });
 
 /* ================= boot ================= */
+document.querySelectorAll(".dsec > .card-h").forEach(h => {
+  h.addEventListener("click", (e)=>{
+    if(e.target.closest("input, button, select, textarea, a, label")) return;
+    h.parentElement.classList.toggle("closed");
+  });
+});
 document.getElementById("verTag").textContent = APP_VERSION;
 loadState().then(()=>{
   renderJobs();
