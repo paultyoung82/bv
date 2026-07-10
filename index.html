@@ -40,7 +40,7 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .btn-block{width:100%;}
 /* ---------- cards / sections ---------- */
 .card{background:var(--card); border:1px solid var(--line); border-radius:14px; margin-top:14px; overflow:hidden;}
-.card-h{display:flex; align-items:center; gap:8px; padding:13px 16px; border-bottom:1px solid var(--line); background:#FAFBFE;}
+.card-h{display:flex; align-items:center; gap:8px; padding:13px 16px; border-bottom:1px solid var(--line); background:#DCE3F0;}
 .card-h h2{font-family:'Archivo',sans-serif; font-size:13.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--deep);}
 .card-h .tag{margin-left:auto; font-size:11px; color:var(--hint); text-align:right;}
 .card-b{padding:14px 16px 16px;}
@@ -59,8 +59,10 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 /* computed readouts */
 .calc{background:#F7F9FD; border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:10px; font-size:13.5px;}
 .calc table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;}
-.calc td{padding:3px 0;}
-.calc td:last-child{text-align:right; font-weight:600; color:var(--deep);}
+.calc th{font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--hint); text-align:right; padding:2px 0;}
+.calc td{padding:3px 0; text-align:right;}
+.calc td:first-child{text-align:left; font-weight:400; color:var(--ink);}
+.calc td:not(:first-child){font-weight:600; color:var(--deep);}
 .calc .big{color:var(--red); font-family:'Archivo'; font-size:15px;}
 /* ---------- jobs list ---------- */
 .jobrow{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px 15px; margin-top:10px;}
@@ -620,11 +622,8 @@ function computeVol(j){
      XFER  = absolute movement (no negatives)
      blank = arrival - departure (legacy behavior) */
   let diff = null;
-  if(arr != null || dpt != null){
-    const a = arr || 0, d = dpt || 0;
-    if(op === "LOAD") diff = d - a;
-    else if(op === "XFER") diff = Math.abs(a - d);
-    else diff = a - d;
+  if(arr != null && dpt != null){
+    diff = Math.abs(arr - dpt);   /* Vsl/Bg figure is always shown as a positive movement */
   }
   /* Movement difference orientation:
      LOAD  = figure - shore
@@ -641,7 +640,7 @@ function computeVol(j){
   const pct = (difference != null && shore) ? difference/shore : null;
   let wDiff = null, wDifference = null, wPct = null;
   if(diff != null && vef){
-    wDiff = (op === "XFER") ? Math.abs(diff / vef) : diff / vef;
+    wDiff = Math.abs(diff / vef);
   }
   if(wDiff != null && shore != null){
     wDifference = orient(wDiff);
@@ -962,13 +961,18 @@ document.getElementById("secTimes").addEventListener("keydown", (e)=>{
 function refreshCalcs(){
   const j = activeJob(); if(!j) return;
   const v = computeVol(j);
+  const shoreCalcDisp = (v.shore != null) ? fmtN(v.shore)
+    : ((j.vShore && String(j.vShore).trim()) ? esc(String(j.vShore).trim().toUpperCase()) : "&mdash;");
+  const wc = !!v.vef;
+  const vrow = (label, a, w)=> "<tr><td>" + label + "</td><td>" + a + "</td>" + (wc ? "<td>" + w + "</td>" : "") + "</tr>";
   document.getElementById("volCalc").innerHTML = "<table>" +
-    "<tr><td>Vsl/Bg figure</td><td>" + fmtN(v.diff) + "</td></tr>" +
-    "<tr><td>Movement difference</td><td>" + fmtN(v.difference) + "</td></tr>" +
-    "<tr><td>% difference</td><td>" + fmtPct(v.pct) + "</td></tr>" +
-    (v.vef ? "<tr><td>Vsl/Bg figure w/VEF (&divide; " + fmtN(v.vef,4) + ")</td><td>" + fmtN(v.wDiff) + "</td></tr>" +
-      "<tr><td>Movement difference w/VEF</td><td>" + fmtN(v.wDifference) + "</td></tr>" +
-      "<tr><td>% difference w/VEF</td><td>" + fmtPct(v.wPct) + "</td></tr>" : "") +
+    "<tr><th></th><th>Figures</th>" + (wc ? "<th>w/VEF (" + fmtN(v.vef,4) + ")</th>" : "") + "</tr>" +
+    vrow("Shore Figure", shoreCalcDisp, shoreCalcDisp) +
+    vrow("Vsl/Bg Arrival", fmtN(v.arr), fmtN(v.arr)) +
+    vrow("Vsl/Bg Departure", fmtN(v.dpt), fmtN(v.dpt)) +
+    vrow("Vsl/Bg Figure", fmtN(v.diff), fmtN(v.wDiff)) +
+    vrow("Movement Difference", fmtN(v.difference), fmtN(v.wDifference)) +
+    vrow("% Difference", fmtPct(v.pct), fmtPct(v.wPct)) +
     "</table>";
   const e1 = computeEtf1(j);
   document.getElementById("etf1Calc").innerHTML = e1 ? "<table>" +
