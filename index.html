@@ -46,7 +46,7 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .card-b{padding:14px 16px 16px;}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
 .grid1{display:grid; grid-template-columns:1fr; gap:10px;}
-.grid-times{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(10,auto); grid-auto-flow:column; gap:10px 12px;}
+.grid-times{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px;}
 .fld label{display:block; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--label); margin-bottom:4px;}
 .fld input,.fld select,.fld textarea{width:100%; border:1px solid var(--line); border-radius:9px; background:#fff; padding:10px 11px; font-size:15px; font-family:'Inter'; color:var(--ink); font-variant-numeric:tabular-nums;}
 .fld input::placeholder,.fld textarea::placeholder{color:#B7C1D6; font-style:italic; opacity:1;}
@@ -129,7 +129,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .epick.on{border-color:var(--red); color:var(--red); background:#FCEBED; font-weight:600;}
 details.dsec > summary{list-style:none; cursor:pointer;}
 details.dsec > summary::-webkit-details-marker{display:none;}
-.chev{margin-left:8px; color:var(--hint); transition:transform .15s; font-size:12px; flex:none;}
+.chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
 details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 /* misc */
 .hintline{font-size:12.5px; color:var(--hint); margin-top:10px; line-height:1.5;}
@@ -189,7 +189,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 <div class="topbar">
   <div class="topbar-in">
     <button class="backbtn" id="btnBack" style="display:none">&#8249; Jobs</button>
-    <div class="brand">BUREAU VERITAS<small>Shaping a World of Trust</small></div>
+    <div class="brand">BUREAU VERITAS<small>Shaping a World of Trust &middot; <span id="verTag"></span></small></div>
     <div class="spacer"></div>
     <button class="backbtn" id="btnHome" style="display:none">Job Board</button>
     <button class="backbtn" id="btnMenu">&#8942;</button>
@@ -239,7 +239,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
     </div>
     <div class="card">
       <details class="dsec" id="dsecTimes" open>
-      <summary class="card-h"><h2>Movement times</h2><span class="tag">Enter or Tab moves down</span><span class="chev">&#9662;</span></summary>
+      <summary class="card-h"><h2>Movement times</h2><span class="tag">Enter moves down &middot; Tab moves right</span><span class="chev">&#9662;</span></summary>
       <div class="card-b"><div class="grid-times" id="secTimes"></div>
       <p class="hintline">Free format, same as the sheet &mdash; e.g. <b>6/2/26 1418</b>. Only filled times appear in the update.</p></div>
       </details>
@@ -370,6 +370,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 
 <script>
 "use strict";
+const APP_VERSION = "v21";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null };
@@ -851,7 +852,13 @@ function renderEditor(){
   renderEmails();
   renderJobNav();
   renderMapUI("edit");
-  document.getElementById("secTimes").innerHTML = MOVE_TIMES.map(f => fieldHTML(f, j[f.k])).join("");
+  const halfMT = Math.ceil(MOVE_TIMES.length / 2);
+  const seqMT = [];
+  for(let mi = 0; mi < halfMT; mi++){
+    seqMT.push(MOVE_TIMES[mi]);
+    if(MOVE_TIMES[mi + halfMT]) seqMT.push(MOVE_TIMES[mi + halfMT]);
+  }
+  document.getElementById("secTimes").innerHTML = seqMT.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secVol").innerHTML = VOL_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secEtf1").innerHTML = ETF1_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secEtf2").innerHTML = ETF2_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
@@ -950,13 +957,28 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
   e.target.value = formatted;
   j[k] = formatted; j.updatedAt = Date.now(); persist(); refreshCalcs();
 });
-/* Enter moves to the field below in Movement times (grid flows down, so DOM-next = below) */
-document.getElementById("secTimes").addEventListener("keydown", (e)=>{
+/* Enter moves DOWN to the field below in every section; Tab moves right (natural order) */
+document.getElementById("view-edit").addEventListener("keydown", (e)=>{
   if(e.key !== "Enter") return;
+  const t = e.target;
+  const navigable = t.matches && (t.matches("input, select") || (t.tagName === "TEXTAREA" && t.classList.contains("grow")));
+  if(!navigable) return;   /* Operational Comments keeps Enter = new line */
   e.preventDefault();
-  const inputs = Array.from(document.querySelectorAll("#secTimes input"));
-  const i = inputs.indexOf(e.target);
-  if(i > -1 && i < inputs.length - 1) inputs[i+1].focus();
+  const fields = Array.from(document.querySelectorAll("#view-edit input, #view-edit select, #view-edit textarea.grow"))
+    .filter(el => el.offsetParent !== null && !el.disabled);
+  const r = t.getBoundingClientRect();
+  let best = null, bestScore = Infinity;
+  fields.forEach(el => {
+    if(el === t) return;
+    const b = el.getBoundingClientRect();
+    if(b.top <= r.top + 5) return;                 /* only fields BELOW */
+    const score = (b.top - r.top) * 3 + Math.abs(b.left - r.left);
+    if(score < bestScore){ bestScore = score; best = el; }
+  });
+  if(best){
+    best.focus();
+    if(best.select){ try{ best.select(); }catch(_e){} }
+  }
 });
 function refreshCalcs(){
   const j = activeJob(); if(!j) return;
@@ -1514,7 +1536,8 @@ function renderMeter(usedBytes, quotaBytes){
     "Job data: <b>" + fmtSize(usedBytes) + "</b>" + (quotaBytes ? " of " + fmtSize(quotaBytes) + " available" : " of ~5 MB") +
     '<div style="height:6px; background:#EDF0F7; border-radius:4px; margin-top:6px; overflow:hidden;">' +
     '<div style="height:100%; width:' + Math.max(pct, 1).toFixed(1) + '%; background:' + barColor + '; border-radius:4px;"></div></div>' +
-    (pct > 80 ? '<div style="color:var(--red); margin-top:5px;">Getting full — remove old map snapshots or delete completed jobs.</div>' : "");
+    (pct > 80 ? '<div style="color:var(--red); margin-top:5px;">Getting full — remove old map snapshots or delete completed jobs.</div>' : "") +
+    '<div style="margin-top:6px; color:var(--hint);">App version ' + APP_VERSION + "</div>";
 }
 function updateStorageMeter(){
   const jobBytes = JSON.stringify(state.jobs).length;
@@ -1676,6 +1699,7 @@ function hideMenu(){ menuPop.style.display = "none"; }
 document.addEventListener("click", (e)=>{ if(!menuPop.contains(e.target)) hideMenu(); });
 
 /* ================= boot ================= */
+document.getElementById("verTag").textContent = APP_VERSION;
 loadState().then(()=>{
   renderJobs();
   show("jobs");
