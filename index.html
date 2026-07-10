@@ -613,12 +613,40 @@ function autosizeAll(root){
 /* ================= formulas (mirroring Sheet1) ================= */
 function computeVol(j){
   const shore = pNum(j.vShore), arr = pNum(j.vArr), dpt = pNum(j.vDpt), vef = pNum(j.vef);
-  const diff = (arr!=null || dpt!=null) ? ( (arr||0) - (dpt||0) ) : null;
-  const difference = (diff!=null && shore!=null) ? diff - shore : null;
-  const pct = (difference!=null && shore) ? difference/shore : null;
+  const op = String(j.operation || "").toUpperCase();
+  /* Vsl/Bg figure depends on the move:
+     LOAD  = departure - arrival   (barge leaves fuller)
+     DISCH = arrival - departure   (barge leaves lighter)
+     XFER  = absolute movement (no negatives)
+     blank = arrival - departure (legacy behavior) */
+  let diff = null;
+  if(arr != null || dpt != null){
+    const a = arr || 0, d = dpt || 0;
+    if(op === "LOAD") diff = d - a;
+    else if(op === "XFER") diff = Math.abs(a - d);
+    else diff = a - d;
+  }
+  /* Movement difference orientation:
+     LOAD  = figure - shore
+     DISCH = shore - figure
+     XFER  = absolute
+     blank = figure - shore (legacy) */
+  function orient(fig){
+    if(fig == null || shore == null) return null;
+    if(op === "DISCH") return shore - fig;
+    if(op === "XFER") return Math.abs(fig - shore);
+    return fig - shore;
+  }
+  const difference = orient(diff);
+  const pct = (difference != null && shore) ? difference/shore : null;
   let wDiff = null, wDifference = null, wPct = null;
-  if(diff!=null && vef){ wDiff = diff / vef; }
-  if(wDiff!=null && shore!=null){ wDifference = wDiff - shore; wPct = shore ? wDifference/shore : null; }
+  if(diff != null && vef){
+    wDiff = (op === "XFER") ? Math.abs(diff / vef) : diff / vef;
+  }
+  if(wDiff != null && shore != null){
+    wDifference = orient(wDiff);
+    wPct = shore ? wDifference/shore : null;
+  }
   return {shore, arr, dpt, diff, difference, pct, vef, wDiff, wDifference, wPct};
 }
 function computeEtf1(j){
@@ -935,11 +963,11 @@ function refreshCalcs(){
   const j = activeJob(); if(!j) return;
   const v = computeVol(j);
   document.getElementById("volCalc").innerHTML = "<table>" +
-    "<tr><td>Vsl/Bg diff (arr &minus; dpt)</td><td>" + fmtN(v.diff) + "</td></tr>" +
-    "<tr><td>Difference vs shore</td><td>" + fmtN(v.difference) + "</td></tr>" +
+    "<tr><td>Vsl/Bg figure</td><td>" + fmtN(v.diff) + "</td></tr>" +
+    "<tr><td>Movement difference</td><td>" + fmtN(v.difference) + "</td></tr>" +
     "<tr><td>% difference</td><td>" + fmtPct(v.pct) + "</td></tr>" +
-    (v.vef ? "<tr><td>Vsl/Bg w/VEF (&divide; " + v.vef + ")</td><td>" + fmtN(v.wDiff) + "</td></tr>" +
-      "<tr><td>Difference w/VEF</td><td>" + fmtN(v.wDifference) + "</td></tr>" +
+    (v.vef ? "<tr><td>Vsl/Bg figure w/VEF (&divide; " + fmtN(v.vef,4) + ")</td><td>" + fmtN(v.wDiff) + "</td></tr>" +
+      "<tr><td>Movement difference w/VEF</td><td>" + fmtN(v.wDifference) + "</td></tr>" +
       "<tr><td>% difference w/VEF</td><td>" + fmtPct(v.wPct) + "</td></tr>" : "") +
     "</table>";
   const e1 = computeEtf1(j);
@@ -1051,7 +1079,7 @@ function docHTML(j){
   const shoreDisp = (v.shore != null) ? fmtN(v.shore)
     : ((j.vShore && String(j.vShore).trim()) ? esc(String(j.vShore).trim().toUpperCase()) : "&mdash;");
   const e1 = computeEtf1(j), e2 = computeEtf2(j);
-  const wvefTh = v.vef ? "<th>w/VEF (" + esc(j.vef) + ")</th>" : "";
+  const wvefTh = v.vef ? "<th>w/VEF (" + fmtN(v.vef,4) + ")</th>" : "";
   let h = '<div class="doc-mast"><div><div class="dm-brand">BUREAU VERITAS</div><div class="dm-tag">Shaping a World of Trust</div></div>' +
     '<div class="dm-right"><div class="dm-job">' + esc(j.jobNo || "") + '</div>' +
     '<div class="dm-asof">' + (j.asOf ? "Update as of " + esc(j.asOf) : "") + "</div></div></div>";
