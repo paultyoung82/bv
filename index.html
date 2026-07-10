@@ -240,7 +240,9 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
     <div class="card">
       <details class="dsec" id="dsecTimes" open>
       <summary class="card-h"><h2>Movement times</h2><span class="tag">Enter moves down &middot; Tab moves right</span><span class="chev">&#9662;</span></summary>
-      <div class="card-b"><div class="grid-times" id="secTimes"></div>
+      <div class="card-b">
+      <div id="vslTimesRow" style="margin-bottom:12px"></div>
+      <div class="grid-times" id="secTimes"></div>
       <p class="hintline">Free format, same as the sheet &mdash; e.g. <b>6/2/26 1418</b>. Only filled times appear in the update.</p></div>
       </details>
     </div>
@@ -370,7 +372,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 
 <script>
 "use strict";
-const APP_VERSION = "v21";
+const APP_VERSION = "v22";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null };
@@ -444,6 +446,7 @@ function migrate(j){
   if(j.sendIdx >= j.emails.length) j.sendIdx = 0;
   MOVE_TIMES.forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
   if(j.incTimes == null) j.incTimes = true;
+  if(j.vslTimes == null) j.vslTimes = false;
   if(j.incRate == null) j.incRate = false;
 }
 function persist(){
@@ -527,11 +530,16 @@ const JOB_FIELDS = [
 ];
 /* Movement times — full sequence; grid flows down column 1 then column 2 */
 const MOVE_TIMES = [
+  {k:"vEosp",    l:"End of Sea Passage", vsl:true},
+  {k:"vAnch",    l:"Vessel Anchored", vsl:true},
   {k:"nort",     l:"N.O.R.T"},
+  {k:"vAweigh",  l:"Anchor Aweigh", vsl:true},
+  {k:"vPilot",   l:"Pilot Onboard", vsl:true},
   {k:"dInspNot", l:"Inspector Notified"},
+  {k:"dInspArr", l:"Inspector Arrived"},
   {k:"arr",      l:"Vsl/Bg(s) Arrived"},
   {k:"dk",       l:"Vsl/Bg(s) Docked"},
-  {k:"dInspArr", l:"Inspector Arrived"},
+  {k:"vInspOnb", l:"Inspector Onboard", vsl:true},
   {k:"dCommInsp",l:"Commenced Inspection"},
   {k:"dCompInsp",l:"Completed Inspection"},
   {k:"dStOpen",  l:"Shore Tank Opened"},
@@ -541,13 +549,17 @@ const MOVE_TIMES = [
   {k:"resumed",  l:"Resumed Operations"},
   {k:"dInspNot2",l:"Inspector Notified (F)"},
   {k:"dInspArr2",l:"Inspector Arrived (F)"},
+  {k:"vInspOnb2",l:"Inspector Onboard (F)", vsl:true},
   {k:"comp",     l:"Completed Operations"},
-  {k:"dStClose", l:"Shore Tank Closed"},
   {k:"dCommF",   l:"Commenced Final Inspection"},
   {k:"dCompF",   l:"Completed Final Inspection"},
   {k:"hoseOff",  l:"Hose/Arm Disconnected"},
+  {k:"dStClose", l:"Shore Tank Closed"},
   {k:"rlsd",     l:"Vsl/Bg(s) Released"}
 ];
+function activeTimes(j){
+  return (j && j.vslTimes) ? MOVE_TIMES : MOVE_TIMES.filter(f => !f.vsl);
+}
 const VOL_FIELDS = [
   {k:"vShore", l:"Shore figure", num:true, ph:"ex: 350,900.56", fmt:true},
   {k:"vArr",   l:"Vsl/Bg arrival", num:true, ph:"ex: 351,073.06", fmt:true},
@@ -852,13 +864,7 @@ function renderEditor(){
   renderEmails();
   renderJobNav();
   renderMapUI("edit");
-  const halfMT = Math.ceil(MOVE_TIMES.length / 2);
-  const seqMT = [];
-  for(let mi = 0; mi < halfMT; mi++){
-    seqMT.push(MOVE_TIMES[mi]);
-    if(MOVE_TIMES[mi + halfMT]) seqMT.push(MOVE_TIMES[mi + halfMT]);
-  }
-  document.getElementById("secTimes").innerHTML = seqMT.map(f => fieldHTML(f, j[f.k])).join("");
+  renderTimes(j);
   document.getElementById("secVol").innerHTML = VOL_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secEtf1").innerHTML = ETF1_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secEtf2").innerHTML = ETF2_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
@@ -883,6 +889,23 @@ function renderEditor(){
     const el = document.getElementById(id); if(el) el.open = true;
   });
   requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
+}
+function renderTimes(j){
+  const list = activeTimes(j);
+  const half = Math.ceil(list.length / 2);
+  const seq = [];
+  for(let i = 0; i < half; i++){
+    seq.push(list[i]);
+    if(list[i + half]) seq.push(list[i + half]);
+  }
+  document.getElementById("secTimes").innerHTML = seq.map(f => fieldHTML(f, j[f.k])).join("");
+  document.getElementById("vslTimesRow").innerHTML =
+    '<label class="toggle' + (j.vslTimes ? " on" : "") + '"><input type="checkbox" id="cbVslTimes"' + (j.vslTimes ? " checked" : "") + ">Include vessel times</label>";
+  document.getElementById("cbVslTimes").onchange = (e)=>{
+    const jj = activeJob(); if(!jj) return;
+    jj.vslTimes = e.target.checked; jj.updatedAt = Date.now(); persist();
+    renderTimes(jj);
+  };
 }
 function renderEmails(){
   const j = activeJob(); if(!j) return;
@@ -1113,7 +1136,7 @@ function docHTML(j){
     kv("Vsl / Boat", j.vessel) + kv("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
     kv("Port", j.port) + kv("S/T(s)", j.sts) + kv("VEF", j.vef) + kv("Status", j.status) +
     "</div></div>";
-  const kt = j.incTimes !== false ? timeRows(MOVE_TIMES, j) : "";
+  const kt = j.incTimes !== false ? timeRows(activeTimes(j), j) : "";
   if(kt) h += '<div class="doc-sec"><h3>' + DOC_TITLES.times + '</h3><div class="doc-times">' + kt + "</div></div>";
   if(j.incVol && (v.shore != null || v.arr != null || v.dpt != null || (j.vShore && String(j.vShore).trim()))){
     h += '<div class="doc-sec"><h3>' + DOC_TITLES.vol + '</h3><table class="doc-vol">' +
