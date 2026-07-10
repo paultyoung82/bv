@@ -243,7 +243,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
       <div class="card-b">
       <div id="vslTimesRow" style="margin-bottom:12px"></div>
       <div class="grid-times" id="secTimes"></div>
-      <p class="hintline">Free format, same as the sheet &mdash; e.g. <b>6/2/26 1418</b>. Only filled times appear in the update.</p></div>
+      <p class="hintline">Type a full date-time once (e.g. <b>6/2/26 1418</b>) &mdash; after that just type the time (<b>1510</b>) and the auto-date fills in when you move on. Typing a new full date-time updates the auto-date. Only filled times appear in the update.</p></div>
       </details>
     </div>
     <div class="card">
@@ -372,10 +372,10 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
 
 <script>
 "use strict";
-const APP_VERSION = "v22";
+const APP_VERSION = "v23";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
-let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null };
+let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
 
 const idb = { db: null };
 let useIDB = false;
@@ -559,6 +559,22 @@ const MOVE_TIMES = [
 ];
 function activeTimes(j){
   return (j && j.vslTimes) ? MOVE_TIMES : MOVE_TIMES.filter(f => !f.vsl);
+}
+const MT_KEYS = new Set(MOVE_TIMES.map(f => f.k));
+function fmtDateOnly(d){
+  return (d.getMonth()+1) + "/" + d.getDate() + "/" + String(d.getFullYear()).slice(2);
+}
+function initAutoDate(j){
+  let maxT = null;
+  MOVE_TIMES.forEach(f => {
+    const t = parseFreeTime(j[f.k]);
+    if(t != null && (maxT == null || t > maxT)) maxT = t;
+  });
+  state.autoDate = fmtDateOnly(maxT != null ? new Date(maxT) : new Date());
+}
+function updateAutoChip(){
+  const el = document.getElementById("autoDateVal");
+  if(el) el.textContent = state.autoDate;
 }
 const VOL_FIELDS = [
   {k:"vShore", l:"Shore figure", num:true, ph:"ex: 350,900.56", fmt:true},
@@ -899,8 +915,10 @@ function renderTimes(j){
     if(list[i + half]) seq.push(list[i + half]);
   }
   document.getElementById("secTimes").innerHTML = seq.map(f => fieldHTML(f, j[f.k])).join("");
+  initAutoDate(j);
   document.getElementById("vslTimesRow").innerHTML =
-    '<label class="toggle' + (j.vslTimes ? " on" : "") + '"><input type="checkbox" id="cbVslTimes"' + (j.vslTimes ? " checked" : "") + ">Include vessel times</label>";
+    '<label class="toggle' + (j.vslTimes ? " on" : "") + '"><input type="checkbox" id="cbVslTimes"' + (j.vslTimes ? " checked" : "") + ">Include vessel times</label>" +
+    ' <span class="toggle" style="cursor:default; margin-left:6px">Auto-date:&nbsp;<b id="autoDateVal">' + esc(state.autoDate) + "</b></span>";
   document.getElementById("cbVslTimes").onchange = (e)=>{
     const jj = activeJob(); if(!jj) return;
     jj.vslTimes = e.target.checked; jj.updatedAt = Date.now(); persist();
@@ -970,6 +988,23 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
   if(ds.ei != null && ds.ek === "ref"){
     const v = normRef(e.target.value);
     e.target.value = v; j.emails[+ds.ei].ref = v; j.updatedAt = Date.now(); persist();
+    return;
+  }
+  if(k && MT_KEYS.has(k)){
+    const tv = String(e.target.value || "").trim();
+    if(!tv) return;
+    let hhmm = null;
+    const mcolon = tv.match(/^(\d{1,2}):(\d{2})$/);
+    if(mcolon) hhmm = mcolon[1].padStart(2, "0") + mcolon[2];
+    else if(/^\d{3,4}$/.test(tv)) hhmm = tv.padStart(4, "0");
+    if(hhmm){
+      const full = state.autoDate + " " + hhmm;
+      e.target.value = full; j[k] = full;
+      j.updatedAt = Date.now(); persist();
+    } else {
+      const t = parseFreeTime(tv);
+      if(t != null){ state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip(); }
+    }
     return;
   }
   if(!k || !(k in FMT_DP)) return;
