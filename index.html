@@ -230,7 +230,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
       <summary class="card-h"><h2>Email</h2><span class="tag">first email is the default</span><span class="chev">&#9662;</span></summary>
       <div class="card-b">
         <div id="secEmails"></div>
-        <button class="btn btn-sm" type="button" id="btnAddEmail">&#43; Add email</button>
+        <button class="btn btn-sm btn-navy" type="button" id="btnAddEmail">&#43; Add email</button>
         <p class="hintline">&#8635; auto-generates the subject from job info &mdash; add your APD# after.</p>
       </div>
       </details>
@@ -271,7 +271,7 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
     </div>
     <div class="card">
       <details class="dsec" id="dsecComments" open>
-      <summary class="card-h"><h2>Additional comments</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
+      <summary class="card-h"><h2>Operational Comments</h2><span class="chev" style="margin-left:auto">&#9662;</span></summary>
       <div class="card-b"><div class="grid1" id="secComments"></div></div>
       </details>
     </div>
@@ -316,6 +316,10 @@ details.dsec:not([open]) .chev{transform:rotate(-90deg);}
   <input id="calcIn" inputmode="decimal" placeholder="0" autocomplete="off">
   <div class="calc-ans" id="calcAns"></div>
   <div class="calc-grid" id="calcGrid">
+    <button type="button" class="op" data-cb="mc">MC</button>
+    <button type="button" class="op" data-cb="mr">MR</button>
+    <button type="button" class="op" data-cb="m-">M&minus;</button>
+    <button type="button" class="op" data-cb="m+">M&#43;</button>
     <button type="button" class="cl" data-cb="C">C</button>
     <button type="button" class="op" data-cb="(">(</button>
     <button type="button" class="op" data-cb=")">)</button>
@@ -436,6 +440,8 @@ function migrate(j){
   if(typeof j.sendIdx !== "number" || j.sendIdx < 0) j.sendIdx = 0;
   if(j.sendIdx >= j.emails.length) j.sendIdx = 0;
   MOVE_TIMES.forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
+  if(j.incTimes == null) j.incTimes = true;
+  if(j.incRate == null) j.incRate = false;
 }
 function persist(){
   const data = JSON.stringify(state.jobs);
@@ -497,9 +503,10 @@ function chipStyle(status){
    ===================================================================== */
 const DOC_TITLES = {
   times: "Movement times",
+  rate: "Load / discharge rate",
   vol: "Volume comparison (unconfirmed)",
   etf: "Estimated time of finish",
-  comments: "Additional comments",
+  comments: "Operational Comments",
   position: "Vessel position"
 };
 /* ================= field configs ================= */
@@ -563,7 +570,7 @@ const RATE_FIELDS = [
 
 function blankJob(){
   const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(),
-    status:"0.0 Working", incVol:true, incEtf:false, asOf:"", comments:"", refNo:"", mapImg:"",
+    status:"0.0 Working", incVol:true, incEtf:false, incTimes:true, incRate:false, asOf:"", comments:"", refNo:"", mapImg:"",
     emails:[{to:"", cc:"", subject:"", ref:"", relay:"*BV*"}], sendIdx:0 };
   [].concat(JOB_FIELDS, MOVE_TIMES, VOL_FIELDS, ETF1_FIELDS, ETF2_FIELDS, RATE_FIELDS)
     .forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
@@ -827,7 +834,7 @@ function renderEditor(){
     '<div class="fld"><label>Update info as of</label><div class="row">' +
       '<input data-k="asOf" value="' + esc(j.asOf) + '" placeholder="6/5/26 1918">' +
       '<button class="btn btn-sm" type="button" id="btnNow">Now</button></div></div>' +
-    '<div class="fld"><label>Additional comments</label>' +
+    '<div class="fld"><label>Operational Comments</label>' +
       '<textarea class="tall" data-k="comments" placeholder="ex: Completion update. More info to follow soonest available.">' + esc(j.comments) + "</textarea></div>";
   document.getElementById("btnNow").onclick = ()=>{
     const jj = activeJob(); jj.asOf = nowStamp(); jj.updatedAt = Date.now(); persist();
@@ -857,7 +864,7 @@ function renderEmails(){
       '<div class="fld"><label>CC</label><textarea class="grow" rows="1" data-ei="' + i + '" data-ek="cc" placeholder="ex: dispatch@bureauveritas.com">' + esc(em.cc) + "</textarea></div>" +
       '<div class="fld"><label>Subject</label>' +
         '<textarea class="grow" rows="1" data-ei="' + i + '" data-ek="subject" placeholder="Press Generate Subject Line below">' + esc(em.subject) + "</textarea>" +
-        '<button class="btn btn-sm" type="button" data-egen="' + i + '" style="margin-top:7px">&#8635;&nbsp; Generate Subject Line</button>' +
+        '<button class="btn btn-sm btn-navy" type="button" data-egen="' + i + '" style="margin-top:7px">&#8635;&nbsp; Generate Subject Line</button>' +
       "</div>" +
       '<div class="fld"><label>Relay tag (Power Automate)</label>' +
       '<input data-ei="' + i + '" data-ek="relay" value="' + esc(em.relay || "") + '" placeholder="*BV* — added in front of the subject"></div>' +
@@ -972,8 +979,10 @@ document.getElementById("btnDel").onclick = ()=>{
 
 /* ================= preview ================= */
 const TOGGLES = [
+  {k:"incTimes", l:"Movement times"},
   {k:"incVol", l:"Volume comparison"},
-  {k:"incEtf", l:"ETF"}
+  {k:"incEtf", l:"ETF"},
+  {k:"incRate", l:"Load / discharge rate"}
 ];
 function renderPreview(){
   const j = activeJob(); if(!j) return;
@@ -1039,6 +1048,8 @@ function timeRows(fields, j){
 }
 function docHTML(j){
   const v = computeVol(j);
+  const shoreDisp = (v.shore != null) ? fmtN(v.shore)
+    : ((j.vShore && String(j.vShore).trim()) ? esc(String(j.vShore).trim().toUpperCase()) : "&mdash;");
   const e1 = computeEtf1(j), e2 = computeEtf2(j);
   const wvefTh = v.vef ? "<th>w/VEF (" + esc(j.vef) + ")</th>" : "";
   let h = '<div class="doc-mast"><div><div class="dm-brand">BUREAU VERITAS</div><div class="dm-tag">Shaping a World of Trust</div></div>' +
@@ -1048,12 +1059,12 @@ function docHTML(j){
     kv("Vsl / Boat", j.vessel) + kv("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
     kv("Port", j.port) + kv("S/T(s)", j.sts) + kv("VEF", j.vef) + kv("Status", j.status) +
     "</div></div>";
-  const kt = timeRows(MOVE_TIMES, j);
+  const kt = j.incTimes !== false ? timeRows(MOVE_TIMES, j) : "";
   if(kt) h += '<div class="doc-sec"><h3>' + DOC_TITLES.times + '</h3><div class="doc-times">' + kt + "</div></div>";
-  if(j.incVol && (v.shore != null || v.arr != null || v.dpt != null)){
+  if(j.incVol && (v.shore != null || v.arr != null || v.dpt != null || (j.vShore && String(j.vShore).trim()))){
     h += '<div class="doc-sec"><h3>' + DOC_TITLES.vol + '</h3><table class="doc-vol">' +
       "<tr><th></th><th>Figures</th>" + wvefTh + "</tr>" +
-      '<tr class="hl"><td>Shore Figure</td><td>' + fmtN(v.shore) + "</td>" + (v.vef?"<td>"+fmtN(v.shore)+"</td>":"") + "</tr>" +
+      '<tr class="hl"><td>Shore Figure</td><td>' + shoreDisp + "</td>" + (v.vef?"<td>"+shoreDisp+"</td>":"") + "</tr>" +
       "<tr><td>Vsl/Bg Arrival</td><td>" + fmtN(v.arr) + "</td>" + (v.vef?"<td>"+fmtN(v.arr)+"</td>":"") + "</tr>" +
       "<tr><td>Vsl/Bg Departure</td><td>" + fmtN(v.dpt) + "</td>" + (v.vef?"<td>"+fmtN(v.dpt)+"</td>":"") + "</tr>" +
       '<tr class="hl"><td>Vsl/Bg Figure</td><td>' + fmtN(v.diff) + "</td>" + (v.vef?"<td>"+fmtN(v.wDiff)+"</td>":"") + "</tr>" +
@@ -1067,6 +1078,13 @@ function docHTML(j){
       '<span><span class="k">Qty left: </span>' + fmtN(e1.left,0) + " @ " + fmtN(pNum(j.e1Rate),0) + "/hr</span>";
     if(e2 && e2.etf) h += '<span><span class="k">ETF (fixed qty): </span><b>' + fmtDT(e2.etf) + "</b></span>";
     h += "</div></div>";
+  }
+  const rr = computeRate(j);
+  if(j.incRate && rr && rr.rate != null){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.rate + '</h3><div class="doc-etf">' +
+      '<span><span class="k">Hours: </span><b>' + fmtN(rr.hours) + "</b></span>" +
+      '<span><span class="k">Rate / hr: </span><b>' + fmtN(rr.rate) + "</b></span>" +
+      "</div></div>";
   }
   if(j.comments && j.comments.trim()){
     h += '<div class="doc-sec"><h3>' + DOC_TITLES.comments + '</h3><div class="doc-comments">' + esc(j.comments) + "</div></div>";
@@ -1268,9 +1286,12 @@ async function generateImage(){
       '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center;">' +
       (canCopy ? '<button class="btn btn-sm" id="imgCopy">Copy image</button>' : "") +
       (canShare ? '<button class="btn btn-sm btn-navy" id="imgShare">Share &rarr; Mail</button>' : "") +
+      (isApple() ? '<button class="btn btn-sm btn-red" id="imgShortcut">Mail via Shortcut</button>' : "") +
       '<button class="btn btn-sm" id="imgSave">Save PNG</button></div>';
     if(canCopy) document.getElementById("imgCopy").onclick = copyImage;
     if(canShare) document.getElementById("imgShare").onclick = shareImage;
+    const scBtn = document.getElementById("imgShortcut");
+    if(scBtn) scBtn.onclick = sendViaShortcut;
     document.getElementById("imgSave").onclick = saveImage;
     toast("Image ready — copy, share or save it, then open your email");
   } catch(err){
@@ -1308,21 +1329,49 @@ function cleanAddrs(s){
   const m = String(s || "").match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g);
   return m ? Array.from(new Set(m)).join(";") : String(s || "").trim();
 }
-function openEmail(){
-  const j = activeJob(); if(!j) return;
+function emailPayload(j){
   const em = selEmail(j);
   let subj = (em.subject && em.subject.trim()) || buildSubject(j, em.ref);
   if(em.relay && em.relay.trim()) subj = em.relay.trim() + " " + subj;
-  if(!em.to && !subj){ toast("Add To and a subject in the Email section first"); return; }
-  let href = "mailto:" + encodeURIComponent(cleanAddrs(em.to));
-  const q = [];
-  if(em.cc) q.push("cc=" + encodeURIComponent(cleanAddrs(em.cc)));
-  if(subj) q.push("subject=" + encodeURIComponent(subj));
   const asOf = (j.asOf && j.asOf.trim()) || nowStamp();
   let body = "Please see below update info as of " + asOf + " (local central time zone).";
   if(j.comments && j.comments.trim()) body += "\n\n" + j.comments.trim();
-  q.push("body=" + encodeURIComponent(body));
+  return { to: cleanAddrs(em.to), cc: cleanAddrs(em.cc), subject: subj, body: body };
+}
+function isApple(){
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+async function sendViaShortcut(){
+  const j = activeJob(); if(!j) return;
+  if(!state.lastImageBlob){ toast("Press Create image first"); return; }
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({"image/png": state.lastImageBlob})]);
+    }
+  } catch(e){ toast("Couldn't copy image — the Shortcut needs it on the clipboard"); return; }
+  const pl = emailPayload(j);
+  window.location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent("BV Send Update") +
+    "&input=text&text=" + encodeURIComponent(JSON.stringify(pl));
+}
+async function openEmail(){
+  const j = activeJob(); if(!j) return;
+  const pl = emailPayload(j);
+  if(!pl.to && !pl.subject){ toast("Add To and a subject in the Email section first"); return; }
+  let href = "mailto:" + encodeURIComponent(pl.to);
+  const q = [];
+  if(pl.cc) q.push("cc=" + encodeURIComponent(pl.cc));
+  if(pl.subject) q.push("subject=" + encodeURIComponent(pl.subject));
+  q.push("body=" + encodeURIComponent(pl.body));
   href += "?" + q.join("&");
+  if(state.lastImageBlob && navigator.clipboard && window.ClipboardItem){
+    try{
+      await navigator.clipboard.write([new ClipboardItem({"image/png": state.lastImageBlob})]);
+      toast("Image copied \u2014 paste it into the email body (long-press \u2192 Paste, or Ctrl/Cmd+V)");
+    } catch(e){}
+  } else if(!state.lastImageBlob){
+    toast("Tip: press Create image first \u2014 then Open email auto-copies it for pasting");
+  }
   window.location.href = href;
 }
 
@@ -1386,13 +1435,32 @@ function calcEquals(){
     calcAns.textContent = "Invalid expression";
   }
 }
+let calcMem = 0;
+function calcVal(){
+  const ex = calcSanitize(calcIn.value).trim();
+  if(!ex) return null;
+  try{
+    const val = Function('"use strict";return(' + ex + ')')();
+    return (typeof val === "number" && isFinite(val)) ? val : null;
+  } catch(e){ return null; }
+}
+function memShow(){
+  calcAns.textContent = "M = " + calcMem.toLocaleString("en-US",{maximumFractionDigits:8});
+}
 document.getElementById("calcGrid").addEventListener("click", (e)=>{
   const b = e.target.closest("[data-cb]");
   if(!b) return;
   const v = b.dataset.cb;
-  if(v === "C"){ calcIn.value = ""; calcAns.textContent = ""; }
+  if(v === "C"){ calcIn.value = ""; calcAns.textContent = calcMem ? "M = " + calcMem.toLocaleString("en-US",{maximumFractionDigits:8}) : ""; }
   else if(v === "back"){ calcIn.value = calcIn.value.slice(0,-1); }
   else if(v === "="){ calcEquals(); }
+  else if(v === "mc"){ calcMem = 0; calcAns.textContent = "Memory cleared"; }
+  else if(v === "mr"){ calcIn.value += String(calcMem); }
+  else if(v === "m+" || v === "m-"){
+    const val = calcVal();
+    if(val == null){ calcAns.textContent = "Invalid expression"; }
+    else { calcMem += (v === "m+" ? val : -val); memShow(); }
+  }
   else { calcIn.value += v; }
   calcIn.focus();
 });
