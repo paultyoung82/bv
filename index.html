@@ -134,6 +134,22 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .dsec.closed > *:not(.card-h){display:none;}
 .chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
 .dsec.closed .chev{transform:rotate(-90deg);}
+/* help pages */
+.help h3{font-family:'Archivo',sans-serif; font-size:15.5px; font-weight:700; color:var(--deep); margin:20px 0 8px;}
+.help h3:first-child{margin-top:4px;}
+.help h4{font-size:12px; font-weight:600; color:var(--red); margin:16px 0 6px; text-transform:uppercase; letter-spacing:.08em;}
+.help p, .help li{font-size:13.5px; line-height:1.7; color:var(--ink);}
+.help p{margin-bottom:9px;}
+.help ul, .help ol{padding-left:22px; margin-bottom:10px;}
+.help li{margin-bottom:5px;}
+.help code{font-family:Consolas,monospace; font-size:12px; background:#F2F4F9; padding:2px 5px; border-radius:5px; word-break:break-all;}
+.help .hcode{display:block; background:#F2F4F9; border-left:3px solid var(--navy); padding:8px 11px; border-radius:6px; font-family:Consolas,monospace; font-size:12px; margin:6px 0 12px; word-break:break-all;}
+.help .hnote{background:#FCEBED; border-left:3px solid var(--red); padding:8px 11px; border-radius:6px; font-size:13px; margin:6px 0 12px;}
+/* saved boats editor */
+.boatrow{display:flex; gap:8px; margin-bottom:8px; align-items:flex-start;}
+.boatrow input{min-width:0; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13.5px; font-family:'Inter';}
+.boatrow .bname{flex:2;}
+.boatrow .blink{flex:3;}
 /* misc */
 .hintline{font-size:12.5px; color:var(--hint); margin-top:10px; line-height:1.5;}
 .linkline{font-size:13px; margin-top:10px; word-break:break-all;}
@@ -206,9 +222,21 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
   <button id="miImport">&#8683;&nbsp; Import jobs from backup</button>
   <button id="miNew">&#43;&nbsp; New job</button>
   <button id="miSync">&#9729;&nbsp; Sync settings</button>
+  <button id="miHelp">&#10067;&nbsp; Help</button>
   <div id="storageMeter" style="padding:10px 16px 12px; font-size:12px; color:var(--label); border-top:1px solid #F0F3F9; cursor:default;"></div>
 </div>
 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+<datalist id="boatNames"></datalist>
+<div id="boatOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
+  <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
+    <div class="card-h"><h2>Saved boats</h2><span class="tag" id="boatCount"></span></div>
+    <div class="card-b">
+      <div id="boatEditList"></div>
+      <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="boatClose" style="margin-left:auto">Close</button></div>
+      <p class="hintline">Edits save when you leave a field. Deleting a saved boat never changes any job.</p>
+    </div>
+  </div>
+</div>
 
 <div class="wrap">
 
@@ -227,7 +255,8 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <div class="card" style="margin-top:6px">
       <div class="dsec" id="dsecJob">
       <div class="card-h"><h2>Job information</h2><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></div>
-      <div class="card-b"><div class="grid2" id="secJob"></div></div>
+      <div class="card-b"><div class="grid2" id="secJob"></div>
+      <div id="boatCtl" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div></div>
       </div>
     </div>
     <div class="card">
@@ -309,6 +338,16 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <p class="hintline" id="prevHint"></p>
   </div>
 
+  <!-- ============ HELP ============ -->
+  <div class="view" id="view-help">
+    <div class="pagetitle">Help</div>
+    <div class="togglerow" style="margin-top:10px">
+      <button class="btn btn-sm" id="helpTab1">Using the Update Tool</button>
+      <button class="btn btn-sm" id="helpTab2">Power Automate Setup</button>
+    </div>
+    <div class="card"><div class="card-b help" id="helpBody"></div></div>
+  </div>
+
 </div>
 
 <!-- sticky actions -->
@@ -375,7 +414,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "v27";
+const APP_VERSION = "V.1.2.8";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -421,6 +460,12 @@ async function loadState(){
     catch(_e){ state.jobs = []; }
   }
   state.jobs.forEach(migrate);
+  try{
+    let braw = null;
+    if(useIDB) braw = await idbGet("boats");
+    if(braw == null) braw = localStorage.getItem("bv_boats_v1");
+    if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; }
+  } catch(e){ boats = []; }
 }
 function updateTopMeter(){
   const el = document.getElementById("topMeter");
@@ -451,6 +496,32 @@ function migrate(j){
   if(j.incTimes == null) j.incTimes = true;
   if(j.vslTimes == null) j.vslTimes = false;
   if(j.incRate == null) j.incRate = false;
+}
+let boats = [];
+let boatsUpdatedAt = 0;
+function persistBoatsLocal(){
+  const data = JSON.stringify({list: boats, updatedAt: boatsUpdatedAt});
+  if(useIDB){ idbSet("boats", data).catch(()=>{}); }
+  else { try{ localStorage.setItem("bv_boats_v1", data); }catch(e){} }
+}
+function persistBoats(){
+  boatsUpdatedAt = Date.now();
+  persistBoatsLocal();
+  if(fb.on && fb.db){
+    fb.db.collection("users").doc(fb.uid).collection("meta").doc("boats")
+      .set({list: JSON.parse(JSON.stringify(boats)), updatedAt: boatsUpdatedAt})
+      .catch(()=>{});
+  }
+  renderBoatNames();
+}
+function renderBoatNames(){
+  const dl = document.getElementById("boatNames");
+  if(dl) dl.innerHTML = boats.map(b => '<option value="' + esc(b.name) + '">').join("");
+}
+function findBoat(name){
+  const n = String(name || "").trim().toLowerCase();
+  if(!n) return null;
+  return boats.find(b => String(b.name || "").trim().toLowerCase() === n) || null;
 }
 function persist(){
   const data = JSON.stringify(state.jobs);
@@ -537,7 +608,7 @@ const DOC_TITLES = {
 /* ================= field configs ================= */
 const JOB_FIELDS = [
   {k:"jobNo",   l:"BV Job#",         ph:"ex: USTEX-26-00805"},
-  {k:"vessel",  l:"Vsl / Boat name", ph:"ex: Hafnia Australia"},
+  {k:"vessel",  l:"Vsl / Boat name", ph:"ex: Hafnia Australia", listId:"boatNames"},
   {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 PBL 3422 or -"},
   {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"]},
   {k:"cargo",   l:"Cargo",           ph:"ex: HS VTB"},
@@ -758,7 +829,7 @@ function vfIds(link){
 function vfEmbed(ids){
   const idVar = ids.imo ? 'var imo="' + ids.imo + '";' : 'var mmsi="' + ids.mmsi + '";';
   const doc = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
-    + '<body style="margin:0">'
+    + '<body style="margin:0; overflow:hidden">'
     + '<scr' + 'ipt type="text/javascript">'
     + 'var width="100%";var height="480";var zoom="9";var names=false;'
     + idVar
@@ -766,7 +837,7 @@ function vfEmbed(ids){
     + '</scr' + 'ipt>'
     + '<scr' + 'ipt type="text/javascript" src="https://www.vesselfinder.com/aismap.js"></scr' + 'ipt>'
     + '</body></html>';
-  return '<iframe class="mapframe" title="Live vessel map" srcdoc="' + doc.replace(/"/g,"&quot;") + '"></iframe>';
+  return '<iframe class="mapframe" title="Live vessel map" scrolling="no" srcdoc="' + doc.replace(/"/g,"&quot;") + '"></iframe>';
 }
 
 /* ================= view switching ================= */
@@ -793,6 +864,7 @@ function show(view){
   } else {
     bar.style.display = "none";
   }
+  if(view !== "edit") clearInterval(state._mapCdI);
   document.getElementById("calcFab").style.display = (view === "edit") ? "flex" : "none";
   if(view !== "edit") document.getElementById("calcPanel").style.display = "none";
   document.getElementById("jobRail").classList.toggle("railon", view === "edit" || view === "preview");
@@ -889,13 +961,16 @@ function fieldHTML(f, val){
     inner = '<textarea class="grow" rows="1" data-k="' + f.k + '" placeholder="' + esc(f.ph||"") + '">' + esc(val) + "</textarea>";
   } else {
     const im = f.num ? ' inputmode="decimal"' : "";
-    inner = '<input data-k="' + f.k + '" value="' + esc(val) + '" placeholder="' + esc(f.ph||"") + '"' + im + ">";
+    const dl = f.listId ? ' list="' + f.listId + '" autocomplete="off"' : "";
+    inner = '<input data-k="' + f.k + '" value="' + esc(val) + '" placeholder="' + esc(f.ph||"") + '"' + im + dl + ">";
   }
   return '<div class="fld' + span + '"><label>' + esc(f.l) + "</label>" + inner + "</div>";
 }
 function renderEditor(){
   const j = activeJob(); if(!j) return;
   document.getElementById("secJob").innerHTML = JOB_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
+  renderBoatNames();
+  renderBoatCtl();
   renderEmails();
   renderJobNav();
   renderMapUI("edit");
@@ -925,6 +1000,49 @@ function renderEditor(){
   });
   requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
 }
+function renderBoatCtl(){
+  const el = document.getElementById("boatCtl");
+  if(!el) return;
+  el.innerHTML =
+    '<button class="btn btn-sm btn-navy" type="button" id="btnSaveBoat">&#128190; Save Boat</button>' +
+    '<button class="btn btn-sm" type="button" id="btnManageBoats">Manage boats (' + boats.length + ')</button>';
+  document.getElementById("btnSaveBoat").onclick = ()=>{
+    const j = activeJob(); if(!j) return;
+    const name = String(j.vessel || "").trim();
+    if(!name){ toast("Enter a boat name first"); return; }
+    const link = String(j.boatLink || "").trim();
+    const ex = findBoat(name);
+    if(ex){ ex.name = name; ex.link = link; toast("Saved boat updated: " + name); }
+    else { boats.push({id: uid(), name: name, link: link}); toast("Boat saved: " + name); }
+    persistBoats();
+    renderBoatCtl();
+  };
+  document.getElementById("btnManageBoats").onclick = ()=>{ renderBoatOverlay(); document.getElementById("boatOverlay").style.display = "block"; };
+}
+function renderBoatOverlay(){
+  document.getElementById("boatCount").textContent = boats.length + " saved";
+  const box = document.getElementById("boatEditList");
+  box.innerHTML = boats.length ? boats.map((b,i) =>
+    '<div class="boatrow">' +
+      '<input class="bname" data-bi="' + i + '" data-bk="name" value="' + esc(b.name) + '" placeholder="Boat name">' +
+      '<input class="blink" data-bi="' + i + '" data-bk="link" value="' + esc(b.link) + '" placeholder="https://www.vesselfinder.com/?mmsi=...">' +
+      '<button class="sbtn del" type="button" data-bdel="' + i + '" title="Delete">&#215;</button>' +
+    "</div>"
+  ).join("") : '<div class="empty">No saved boats yet. Open a job, fill Vsl/Boat name and Boat link, then press Save Boat.</div>';
+  box.querySelectorAll("[data-bdel]").forEach(btn => btn.onclick = ()=>{
+    const i = +btn.dataset.bdel;
+    if(!confirm("Delete saved boat " + (boats[i] && boats[i].name ? boats[i].name : "") + "?")) return;
+    boats.splice(i,1); persistBoats(); renderBoatOverlay(); renderBoatCtl();
+  });
+}
+document.getElementById("boatEditList").addEventListener("change", (e)=>{
+  const ds = e.target.dataset || {};
+  if(ds.bi == null || !ds.bk) return;
+  const b = boats[+ds.bi]; if(!b) return;
+  b[ds.bk] = e.target.value;
+  persistBoats();
+});
+document.getElementById("boatClose").onclick = ()=>{ document.getElementById("boatOverlay").style.display = "none"; renderBoatCtl(); };
 function renderTimes(j){
   const list = activeTimes(j);
   const half = Math.ceil(list.length / 2);
@@ -998,6 +1116,18 @@ document.getElementById("view-edit").addEventListener("input", (e)=>{
   if(!ds.k) return;
   j[ds.k] = e.target.value; j.updatedAt = Date.now();
   persist(); refreshCalcs();
+  if(ds.k === "vessel"){
+    const bMatch = findBoat(e.target.value);
+    if(bMatch && bMatch.link && bMatch.link.trim() && bMatch.link.trim() !== String(j.boatLink||"").trim()){
+      j.boatLink = bMatch.link.trim();
+      const bl = document.querySelector('#secJob [data-k="boatLink"]');
+      if(bl){ bl.value = j.boatLink; autosize(bl); }
+      persist();
+      clearTimeout(state._mapT);
+      state._mapT = setTimeout(()=> renderMapUI("edit"), 400);
+      toast("Boat link filled from saved boat");
+    }
+  }
   if(ds.k === "boatLink"){
     clearTimeout(state._mapT);
     state._mapT = setTimeout(()=> renderMapUI("edit"), 600);
@@ -1259,12 +1389,27 @@ function renderMapUI(scope){
               : "screenshot the live map on the entry page, then <b>Add map snapshot</b> here.")) + "</div>") +
     '<div class="snaprow">' +
       (live ? '<button class="btn btn-sm" data-mapact="refresh">Refresh map</button>' : "") +
+      (live ? '<span id="mapCd" style="font-size:12px; color:var(--hint); align-self:center;"></span>' : "") +
       (canCapture ? '<button class="btn btn-sm btn-navy" data-mapact="capture">Capture map</button>' : "") +
       '<button class="btn btn-sm' + (canCapture ? "" : " btn-navy") + '" data-mapact="add">' + (j.mapImg ? "Replace snapshot" : "Add map snapshot") + "</button>" +
       (canPaste ? '<button class="btn btn-sm" data-mapact="paste">Paste</button>' : "") +
       (j.mapImg ? '<button class="btn btn-sm" style="color:var(--red); border-color:#F0C4CA" data-mapact="remove">Remove</button>' : "") +
     "</div>";
   ctl.querySelectorAll("[data-mapact]").forEach(b => b.onclick = ()=> mapAction(b.dataset.mapact, scope));
+  if(live) startMapCountdown();
+}
+function startMapCountdown(){
+  clearInterval(state._mapCdI);
+  state._mapCd = 60;
+  const cd = document.getElementById("mapCd");
+  if(cd) cd.textContent = "auto-refresh in 60s";
+  state._mapCdI = setInterval(()=>{
+    const el = document.getElementById("mapCd");
+    if(state.view !== "edit" || !el){ clearInterval(state._mapCdI); return; }
+    state._mapCd--;
+    if(state._mapCd <= 0){ renderMapUI("edit"); return; }
+    el.textContent = "auto-refresh in " + state._mapCd + "s";
+  }, 1000);
 }
 function mapAction(act, scope){
   const j = activeJob(); if(!j) return;
@@ -1686,6 +1831,18 @@ function startSync(){
       refreshAfterRemote();
     }
   }, ()=> setSyncDot("err"));
+  const metaRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("boats");
+  if(fb.unsubBoats) fb.unsubBoats();
+  fb.unsubBoats = metaRef.onSnapshot(d => {
+    const dat = d.data();
+    if(dat && (dat.updatedAt || 0) > boatsUpdatedAt){
+      boats = dat.list || [];
+      boatsUpdatedAt = dat.updatedAt;
+      persistBoatsLocal();
+      renderBoatNames();
+      if(state.view === "edit") renderBoatCtl();
+    }
+  }, ()=>{});
   fb.on = true; setSyncDot("on");
   schedulePush();
 }
@@ -1728,7 +1885,8 @@ document.getElementById("syncDot").onclick = openSync;
 document.getElementById("syncClose").onclick = ()=>{ syncOverlay.style.display = "none"; };
 document.getElementById("syncOff").onclick = ()=>{
   if(fb.unsub) fb.unsub();
-  fb.on = false; fb.unsub = null;
+  if(fb.unsubBoats) fb.unsubBoats();
+  fb.on = false; fb.unsub = null; fb.unsubBoats = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
   setSyncDot("off");
@@ -1778,6 +1936,234 @@ document.getElementById("btnMenu").onclick = (e)=>{
 };
 function hideMenu(){ menuPop.style.display = "none"; }
 document.addEventListener("click", (e)=>{ if(!menuPop.contains(e.target)) hideMenu(); });
+
+
+/* ================= help pages ================= */
+const HELP_USING = `
+<h3>1. The Job Board</h3>
+<p>The Job Board is the landing page. Every job is a row showing the boat name (with barges beside it when present), the BV Job#, operation, cargo, port, and the first two lines of its Operational Comments (hover on desktop to read the full text). Rows are tinted by status: Working is green, Pending is light blue, Incoming is pale yellow.</p>
+<ul>
+<li><b>Open a job:</b> tap anywhere on its row.</li>
+<li><b>Change status without opening:</b> tap the colored status chip on the right of the row and pick from the list. The board re-sorts by status number immediately.</li>
+<li><b>New job:</b> the navy button at the top, above the search box. New jobs start at status 1.1 Pending.</li>
+<li><b>Search:</b> type any part of a job#, boat, barge, cargo, or port.</li>
+<li><b>Delete all completed:</b> when any job sits at 8.0 Job Completed, a red button appears under the list — one confirm deletes them all. Export a backup first (menu &#8942;) if you want to keep records.</li>
+</ul>
+<h3>2. Job Information section</h3>
+<p>Fill BV Job#, Vsl/Boat name, Barge(s) (use a dash if none), Operation (LOAD / DISCH / XFER — this drives the volume math), Cargo, Port, S/T(s), VEF, Status, and the Boat link. The VEF formats itself to four decimal places when you leave the field.</p>
+<h4>Saved boats</h4>
+<ul>
+<li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
+<li><b>Recall a boat:</b> start typing in Vsl/Boat name — saved names appear as suggestions. Pick one (or finish typing an exact saved name) and the Boat link fills in automatically and the live map refreshes.</li>
+<li><b>Manage boats:</b> opens the library. Edit a name or link in place (saves when you leave the field) or delete with the &#215; button. Deleting a saved boat never changes any job.</li>
+</ul>
+<h3>3. Email section</h3>
+<p>Each job holds one or more email blocks. The first block is the default used by Open email; when a job has several, you pick which one on the Preview page.</p>
+<ul>
+<li><b>Customer Reference#:</b> type just the number — the app converts any variation (ref#1234, RE#1234, REF #1234) to exactly <code>REF# 1234</code> when you leave the field. This exact format is what Power Automate anchors on.</li>
+<li><b>To / CC:</b> paste straight from Outlook, names and all — <code>Darla Curtis &lt;ddp@Vitol.com&gt;; ...</code> is fine. The app extracts the bare addresses when it builds the email. Put your own work address in CC on every block: it feeds your sent updates back to your Inbox for the Power Automate filer.</li>
+<li><b>Subject:</b> press Generate Subject Line. Format: REF# - UPDATE - BARGES (BOAT) - OPERATION - CARGO - PORT - JOB#. Barges only appear when the barge field has content other than a dash. Edit freely after generating.</li>
+<li><b>Relay tag:</b> defaults to <code>*BV*</code> and is prepended to the subject when the email opens. It is the Power Automate trigger keyword. Clear it on a block if you never want the tag on that email.</li>
+<li><b>Add email / &#215;:</b> add more blocks (each with its own reference, addresses, and subject) or remove one.</li>
+</ul>
+<h3>4. Movement Times</h3>
+<p>All times are free text in the form <code>7/30/26 1510</code>. Only filled boxes appear in the update image, and the image sorts them chronologically no matter what order you filled them.</p>
+<h4>Auto-date (the big time-saver)</h4>
+<ul>
+<li>Type one full date-and-time. From then on, type just the time — <code>1642</code>, <code>940</code>, or <code>9:40</code> — and when you Enter, Tab, or tap away, the auto-date is added in front (940 becomes 0940).</li>
+<li>The current auto-date shows in the Movement Times title bar. It updates whenever you type a new full date-time — so crossing midnight, type <code>7/31/26 0200</code> once and every bare time after uses the 31st.</li>
+<li>Opening a job sets the auto-date to the latest date already in its times, or today for an empty job.</li>
+</ul>
+<h4>Vessel times</h4>
+<p>Tick <b>Include vessel times</b> to add End of Sea Passage, Vessel Anchored, Anchor Aweigh, Pilot Onboard, and the two Inspector Onboard boxes, woven into the operational sequence. Untick and they leave the entry grid and the image (any values typed are kept, just hidden).</p>
+<h4>Navigation</h4>
+<p>In every section: <b>Enter moves down</b> to the field below, <b>Tab moves right</b>. The Operational Comments box is the exception — Enter makes a new line there.</p>
+<h3>5. Volume Comparison</h3>
+<ul>
+<li>Enter Shore figure, Vsl/Bg arrival, Vsl/Bg departure. Numbers format to two decimals with commas when you leave the field.</li>
+<li><b>Vsl/Bg Figure</b> = the absolute difference between arrival and departure. It only calculates once BOTH boxes have a value (a typed 0.00 counts; an empty box does not).</li>
+<li><b>Movement Difference:</b> LOAD = figure minus shore; DISCH = shore minus figure; XFER = absolute value, never negative.</li>
+<li><b>ACTIVE shore:</b> type ACTIVE (or any text) as the shore figure when the tank is active — it displays verbatim, the figure and w/VEF still calculate, and the differences show a dash.</li>
+<li>With a VEF entered, a second w/VEF column appears everywhere, dividing the figure by the VEF.</li>
+</ul>
+<h3>6. ETF calculators and Load/Discharge rate</h3>
+<ul>
+<li><b>ETF — current quantity:</b> as-of date-time, total, loaded so far, rate/hr &#8594; quantity left, hours, days, and the ETF date-time.</li>
+<li><b>ETF — fixed quantity:</b> quantity, rate, start date-time &#8594; ETF.</li>
+<li><b>Load/Discharge rate:</b> commenced and completed date-times plus quantity &#8594; hours and rate/hr.</li>
+<li>These sections open collapsed unless they hold data. Toggle their appearance in the image with the checkboxes on the Preview page.</li>
+</ul>
+<h3>7. Operational Comments</h3>
+<p>Free text; line breaks are preserved. The <b>Update info as of</b> stamp resets to now every time you open the job (press Now to refresh it mid-session). Comments appear in the update image AND as the email body text under the as-of line.</p>
+<h3>8. Live vessel map</h3>
+<ul>
+<li>Paste any VesselFinder link — <code>?imo=</code>, <code>?mmsi=</code>, or a vessel-page address — and the live map appears within a second. Editing the link refreshes it.</li>
+<li>The map <b>auto-refreshes every 60 seconds</b>; the countdown shows next to the Refresh map button, which reloads immediately.</li>
+<li><b>Getting the map into the update image:</b> the live map cannot be captured automatically (browser security). On desktop, press <b>Capture map</b> and choose "This Tab" — one click. On the phone, screenshot the map, then press <b>Add map snapshot</b> and pick it from Photos, or <b>Paste</b> on desktop. The snapshot appears as a Vessel Position section at the bottom of the image and stays with the job until you Replace or Remove it.</li>
+</ul>
+<h3>9. Preview &amp; Send</h3>
+<ul>
+<li>Checkboxes at the top include or exclude Movement times, Volume comparison, ETF, and Load/discharge rate from the image. With multiple email blocks, chips let you pick which email Open email uses.</li>
+<li><b>Create image</b> renders the update exactly as previewed — your print-range copy. Then: <b>Copy image</b>, <b>Share &#8594; Mail</b> (iPhone: image lands in the compose body), <b>Mail via Shortcut</b> (Apple: fully assembled email — see section 11), or <b>Save PNG</b>.</li>
+<li><b>Open email</b> opens a message with To / CC / Subject (relay tag included) and the body text filled — AND auto-copies the image so it is one paste away (long-press &#8594; Paste on the phone, Ctrl/Cmd+V on desktop).</li>
+</ul>
+<h3>10. Data, sync, and backups</h3>
+<ul>
+<li>Everything autosaves on the device as you type ("Saved" flashes in the Job Information title). The header shows your data size next to the &#8942; menu; the menu shows it against the real quota.</li>
+<li><b>Live sync (Firebase):</b> tap the colored dot in the header (grey = off, green = live, red = error). Paste your Firebase config once per device, sign in with your sync email/password, and every device shares one live Job Board — including the saved-boat library. Newest edit wins per job.</li>
+<li><b>Export / Import (menu &#8942;):</b> downloads/reads <code>bv_jobs_backup.json</code>. Import merges by job — newer version wins, nothing is wiped. Keep a backup in OneDrive; it is your safety net against cleared browser data.</li>
+</ul>
+<h3>11. Mail via Shortcut (one-time iPhone setup)</h3>
+<p>Build a Shortcut named exactly <b>BV Send Update</b> in the Shortcuts app with these actions in order:</p>
+<ol>
+<li>Get Dictionary from Input (input: Shortcut Input)</li>
+<li>Get Dictionary Value — key <code>to</code></li>
+<li>Split Text — by custom separator <code>;</code></li>
+<li>Get Dictionary Value — key <code>cc</code></li>
+<li>Split Text — by <code>;</code></li>
+<li>Get Clipboard</li>
+<li>Send Email — Recipients = first Split Text; CC = second Split Text; Subject = dictionary value <code>subject</code>; message = dictionary value <code>body</code> plus the Clipboard; <b>Show Compose Sheet = ON</b>.</li>
+</ol>
+<p>Then in the app: Create image &#8594; Mail via Shortcut &#8594; review the fully assembled email &#8594; send. The From account must exist in Apple Mail (Settings &#8594; Mail &#8594; Accounts).</p>
+<h3>12. Updating the app itself</h3>
+<ol>
+<li>Open the new file locally first and check the version in the header matches what you expect.</li>
+<li>On GitHub: open <code>index.html</code> &#8594; pencil icon &#8594; select all &#8594; paste the new file's full contents &#8594; Commit changes. The commit must say <b>1 file changed</b> — "0 files changed" means you pasted the version already there.</li>
+<li>Wait ~2 minutes, hard-refresh (Ctrl+F5), confirm the header version. Phone: swipe the home-screen app away and reopen; caches can take up to 10 minutes.</li>
+</ol>
+<p>Your job data lives in the browser, not the file — updates never touch it.</p>`;
+
+const HELP_PA = `
+<h3>How the relay works</h3>
+<p><b>Flow B (the Filer)</b> watches your Inbox. Any email whose subject contains <code>REF#</code> is COPIED (never moved) into a mail folder named after that reference, inside a parent folder called <code>BV Jobs</code>. Folders are created automatically. Because you CC yourself on every update, your own updates get filed alongside client replies, so each job folder always holds the full thread.</p>
+<p><b>Flow A (the Relay)</b> fires only on emails FROM you, TO you, with <code>*BV*</code> in the subject. It reads the REF#, opens exactly that folder, takes the newest email, and replies-all with your update image in the body. If anything is missing it emails YOU a notice and stops — it never guesses.</p>
+<div class="hnote"><b>The two rituals.</b> Expressions: click the box &#8594; Expression tab &#8594; paste &#8594; OK; the result must be a pink fx chip, never plain text. Renaming: three dots on the card &#8594; Rename, IMMEDIATELY after adding each action, using the exact names below — expressions refer to them.</div>
+
+<h3>FLOW B — the Filer (build first)</h3>
+<h4>B1. Create flow and trigger</h4>
+<p>make.powerautomate.com &#8594; My flows &#8594; New flow &#8594; Automated cloud flow. Name <code>BV Job Filer</code>. Trigger: <b>When a new email arrives (V3)</b> (Office 365 Outlook). In the trigger: Folder = Inbox; leave From/To/Subject Filter empty; Include Attachments = No.</p>
+<h4>B2. Two variables</h4>
+<p>Add <b>Initialize variable</b> twice: Name <code>ParentId</code>, Type String, empty. Then Name <code>JobFolderId</code>, Type String, empty.</p>
+<h4>B3. The gate (Condition, rename ShouldFile)</h4>
+<p>Three rows joined with AND:</p>
+<ul>
+<li>Row 1: Subject (dynamic content) — contains — <code>REF#</code></li>
+<li>Row 2: left box &#8594; Expression <code>triggerOutputs()?['body/toRecipients']</code> — does not contain — your work address</li>
+<li>Row 3: Subject — does not contain — <code>*BV*</code></li>
+</ul>
+<p>Everything below goes in the TRUE branch. Rows 2–3 keep relay commands out (they are TO you with the tag) while your CC'd updates (TO clients) still file.</p>
+<h4>B4. Extract the REF# (4 actions — exact names matter)</h4>
+<ol>
+<li><b>Compose</b>, rename <code>SplitSubject</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">split(triggerOutputs()?['body/subject'], ' - ')</span>
+<ol start="2">
+<li><b>Filter array</b>, rename <code>FindRef</code>. From &#8594; Expression <code>outputs('SplitSubject')</code>. Edit in advanced mode:</li>
+</ol>
+<span class="hcode">@contains(item(), 'REF#')</span>
+<ol start="3">
+<li><b>Compose</b>, rename <code>RefNumber</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">trim(substring(first(body('FindRef')), indexOf(first(body('FindRef')), 'REF#')))</span>
+<ol start="4">
+<li><b>Compose</b>, rename <code>RefDigits</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">trim(replace(outputs('RefNumber'), 'REF#', ''))</span>
+<h4>B5. Find or create the BV Jobs folder</h4>
+<p><b>Send an HTTP request</b> (the one INSIDE Office 365 Outlook — not the premium HTTP connector), rename <code>GetTopFolders</code>. Method GET, URI (plain text):</p>
+<span class="hcode">https://graph.microsoft.com/v1.0/me/mailFolders?$top=250</span>
+<p><b>Filter array</b>, rename <code>MatchParent</code>. From &#8594; Expression <code>body('GetTopFolders')?['value']</code>. Advanced mode:</p>
+<span class="hcode">@equals(item()?['displayName'], 'BV Jobs')</span>
+<p><b>Condition</b>, rename <code>ParentExists</code>: left Expression <code>length(body('MatchParent'))</code> is greater than 0.</p>
+<ul>
+<li>TRUE: <b>Set variable</b> ParentId &#8594; Expression <code>first(body('MatchParent'))?['id']</code></li>
+<li>FALSE: <b>Send an HTTP request</b> rename <code>CreateParent</code>, POST, URI <code>https://graph.microsoft.com/v1.0/me/mailFolders</code>, Body <code>{"displayName": "BV Jobs"}</code>. Then <b>Set variable</b> ParentId &#8594; Expression <code>body('CreateParent')?['id']</code></li>
+</ul>
+<h4>B6. Find or create THIS job's folder</h4>
+<p>After the condition, at the main level: <b>Send an HTTP request</b> rename <code>GetJobFolders</code>, GET, URI &#8594; Expression:</p>
+<span class="hcode">concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders?$top=250')</span>
+<p><b>Filter array</b> rename <code>MatchJob</code>. From &#8594; Expression <code>body('GetJobFolders')?['value']</code>. Advanced mode:</p>
+<span class="hcode">@equals(item()?['displayName'], outputs('RefDigits'))</span>
+<p><b>Condition</b> rename <code>JobFolderExists</code>: <code>length(body('MatchJob'))</code> is greater than 0.</p>
+<ul>
+<li>TRUE: Set variable JobFolderId &#8594; <code>first(body('MatchJob'))?['id']</code></li>
+<li>FALSE: <b>Send an HTTP request</b> rename <code>CreateJobFolder</code>, POST, URI &#8594; Expression <code>concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders')</code>, Body: type <code>{"displayName": "</code> then insert Expression <code>outputs('RefDigits')</code> then type <code>"}</code>. Then Set variable JobFolderId &#8594; <code>body('CreateJobFolder')?['id']</code></li>
+</ul>
+<h4>B7. Copy the email into the folder</h4>
+<p><b>Send an HTTP request</b> rename <code>CopyMail</code>, POST, URI &#8594; Expression:</p>
+<span class="hcode">concat('https://graph.microsoft.com/v1.0/me/messages/', triggerOutputs()?['body/id'], '/copy')</span>
+<p>Body: type <code>{"destinationId": "</code> then insert Expression <code>variables('JobFolderId')</code> then type <code>"}</code>. Save the flow.</p>
+<h4>B8. Test</h4>
+<p>Send an email with subject <code>REF# FILETEST1 - UPDATE - TEST</code> so that you are only in CC (To someone else). Within a minute, BV Jobs &#8594; FILETEST1 should exist with a copy inside, original untouched in your Inbox. A second email with the same REF# must land in the SAME folder.</p>
+
+<h3>FLOW A — the Relay (build after B works)</h3>
+<h4>A1. Trigger</h4>
+<p>New automated flow <code>BV Update Relay</code>, trigger When a new email arrives (V3): Folder Inbox; <b>From = your work address; To = your work address</b> (the loop-breaker — client updates have clients in To and can never trigger); Subject Filter <code>*BV*</code>; <b>Include Attachments = Yes</b>.</p>
+<h4>A2. Variables</h4>
+<p>Initialize variable ParentId (String, empty). Initialize variable JobFolderId (String, empty).</p>
+<h4>A3. Isolate the update image</h4>
+<p><b>Filter array</b> rename <code>BigAttachments</code>. From &#8594; Expression <code>triggerOutputs()?['body/attachments']</code>. Advanced mode:</p>
+<span class="hcode">@greater(item()?['size'], 50000)</span>
+<h4>A4. Extract the REF# — same four actions, written out again</h4>
+<ol>
+<li><b>Compose</b> rename <code>SplitSubject</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">split(triggerOutputs()?['body/subject'], ' - ')</span>
+<ol start="2">
+<li><b>Filter array</b> rename <code>FindRef</code>. From &#8594; Expression <code>outputs('SplitSubject')</code>. Advanced mode:</li>
+</ol>
+<span class="hcode">@contains(item(), 'REF#')</span>
+<ol start="3">
+<li><b>Compose</b> rename <code>RefNumber</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">trim(substring(first(body('FindRef')), indexOf(first(body('FindRef')), 'REF#')))</span>
+<ol start="4">
+<li><b>Compose</b> rename <code>RefDigits</code>. Inputs &#8594; Expression:</li>
+</ol>
+<span class="hcode">trim(replace(outputs('RefNumber'), 'REF#', ''))</span>
+<h4>A5. Parent folder must exist</h4>
+<p>GetTopFolders + MatchParent exactly as in B5. Condition ParentExists: length &gt; 0. TRUE: Set ParentId as in B5. FALSE: <b>Send an email (V2)</b> to yourself, subject <code>BV Relay notice: no BV Jobs folder yet</code>, then <b>Terminate</b> (Succeeded).</p>
+<h4>A6. Job folder must exist</h4>
+<p>GetJobFolders + MatchJob exactly as in B6. Condition JobFolderFound: length &gt; 0. TRUE: Set JobFolderId. FALSE: Send an email (V2) to yourself — subject: type <code>BV Relay notice: no folder for </code> then insert Expression <code>outputs('RefDigits')</code> — then Terminate (Succeeded).</p>
+<h4>A7. Newest email in the folder</h4>
+<p><b>Get emails (V3)</b> rename <code>GetJobMail</code>. Folder: picker icon &#8594; Enter custom value &#8594; Expression <code>variables('JobFolderId')</code>. <b>Fetch Only Unread Messages = No</b> (the default Yes will sabotage you). Include Attachments = No. Top = 1.</p>
+<h4>A8. Two safety gates</h4>
+<p><b>Condition</b> rename <code>FolderHasMail</code>: Expression <code>length(body('GetJobMail')?['value'])</code> is greater than 0. FALSE: notice email + Terminate.</p>
+<p>In its TRUE branch, <b>Condition</b> rename <code>RefGate</code>: left Expression <code>first(body('GetJobMail')?['value'])?['subject']</code> — contains — right Expression <code>outputs('RefDigits')</code>. FALSE: notice email + Terminate. This makes a wrong-thread reply structurally impossible.</p>
+<h4>A9. DRY RUN first (run like this for days)</h4>
+<p>In the TRUE branch of RefGate: <b>Send an email (V2)</b> to yourself. Subject: <code>BV Relay DRY RUN: </code> + Expression <code>outputs('RefDigits')</code>. Body: label text plus Expressions <code>first(body('GetJobMail')?['value'])?['subject']</code> and <code>first(body('GetJobMail')?['value'])?['from']</code>. Every relay now reports which email it WOULD have answered. Only go live when it is right every single time.</p>
+<h4>A10. Going live</h4>
+<p>Replace the dry-run action with <b>Reply to email (V3)</b>:</p>
+<ul>
+<li>Message Id &#8594; Expression <code>first(body('GetJobMail')?['value'])?['id']</code></li>
+<li>Reply All = Yes</li>
+<li>Body: click the &lt;/&gt; code-view icon in the body toolbar, then Expression:</li>
+</ul>
+<span class="hcode">concat('&lt;img src="data:image/png;base64,', first(body('BigAttachments'))?['contentBytes'], '" style="max-width:100%;"&gt;')</span>
+<ul>
+<li>Attachments: leave empty — the image is embedded in the body, no paperclip.</li>
+<li>Optional: Delete email (V3) with Message Id &#8594; Expression <code>triggerOutputs()?['body/id']</code> to remove the relay command from your Inbox.</li>
+</ul>
+<h3>Troubleshooting</h3>
+<ul>
+<li><b>"action has status Skipped" error:</b> an expression referenced CreateParent/CreateJobFolder outside its branch — use the variables instead.</li>
+<li><b>"Action not found":</b> a rename mismatch; names must match exactly, including capitals.</li>
+<li><b>HTTP 403:</b> wrong action — it must be Send an HTTP request inside Office 365 Outlook, not the premium HTTP connector.</li>
+<li><b>Relay says no folder but the job exists:</b> compare the folder name letter-for-letter with the notice email; a stray double space in the Customer Reference# is the usual cause.</li>
+<li><b>Dry run names an old update of the right job:</b> normal — no newer email exists in the folder; the reply still lands on the correct thread.</li>
+<li><b>Nothing triggers:</b> From AND To must both be your work address and the subject must contain *BV* with asterisks; check the flow is On.</li>
+<li><b>Broken image box:</b> Include Attachments = Yes on the trigger, and the relay email's image must exceed 50 KB (Create Image output always does).</li>
+</ul>`;
+function renderHelp(tab){
+  const b1 = document.getElementById("helpTab1"), b2 = document.getElementById("helpTab2");
+  b1.classList.toggle("btn-navy", tab === 1);
+  b2.classList.toggle("btn-navy", tab === 2);
+  document.getElementById("helpBody").innerHTML = (tab === 1) ? HELP_USING : HELP_PA;
+  window.scrollTo(0,0);
+}
+document.getElementById("helpTab1").onclick = ()=> renderHelp(1);
+document.getElementById("helpTab2").onclick = ()=> renderHelp(2);
+document.getElementById("miHelp").onclick = ()=>{ hideMenu(); renderHelp(1); show("help"); };
 
 /* ================= boot ================= */
 document.querySelectorAll(".dsec > .card-h").forEach(h => {
