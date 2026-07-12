@@ -37,6 +37,7 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .btn:active{transform:scale(.98)}
 .btn-navy{background:var(--navy); border-color:var(--navy); color:#fff;}
 .btn-red{background:var(--red); border-color:var(--red); color:#fff;}
+.btn-gold{background:#FFC000; border-color:#DFA800; color:#3A2E00; font-weight:600;}
 .btn-sm{padding:7px 12px; font-size:13px; border-radius:8px;}
 .btn-block{width:100%;}
 /* ---------- cards / sections ---------- */
@@ -134,6 +135,16 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .dsec.closed > *:not(.card-h){display:none;}
 .chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
 .dsec.closed .chev{transform:rotate(-90deg);}
+/* notes */
+.notecard{border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px; background:#FBFCFE;}
+.notecard.pinned{border-color:var(--navy); background:#EDF3FC;}
+.notecard .nc-h{display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--hint); margin-bottom:5px; font-variant-numeric:tabular-nums;}
+.notecard .nc-h button{background:none; border:none; font-size:13px; cursor:pointer; color:var(--hint); padding:2px 4px; line-height:1;}
+.notecard .nc-h .npin{color:#B4BFD3;}
+.notecard .nc-h .npin.on{color:var(--red);}
+.notecard .nc-h .ndel{margin-left:auto; color:var(--red); font-size:15px;}
+.notecard textarea{width:100%; border:none; background:none; resize:none; font-family:'Inter',sans-serif; font-size:13px; line-height:1.5; color:var(--ink); padding:0; overflow:hidden; max-height:320px;}
+.notecard textarea:focus{outline:none;}
 /* help pages */
 .help h3{font-family:'Archivo',sans-serif; font-size:15.5px; font-weight:700; color:var(--deep); margin:20px 0 8px;}
 .help h3:first-child{margin-top:4px;}
@@ -175,6 +186,8 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .jdot{width:13px; height:13px; border-radius:50%; flex:none; border:2px solid #fff; box-shadow:0 0 0 1px rgba(16,30,66,.28), 0 0 6px rgba(0,0,0,.18);}
 #jobRail{position:fixed; top:calc(env(safe-area-inset-top,0px) + 78px); left:12px; width:216px; max-height:calc(100vh - 112px); overflow:auto; display:none; z-index:30;}
 #jobRail .card{margin-top:0;}
+#notesPanel{position:fixed; top:calc(env(safe-area-inset-top,0px) + 78px); right:12px; width:216px; max-height:calc(100vh - env(safe-area-inset-top,0px) - 104px); overflow:auto; display:none; z-index:44;}
+.notecard:focus-within{border-color:var(--deep); background:#fff; box-shadow:0 2px 10px rgba(16,30,66,.14);}
 .railitem{display:flex; gap:9px; align-items:center; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid #F0F3F9; padding:10px 14px; font-size:13px; color:var(--ink);}
 .railitem:last-child{border-bottom:none;}
 .railitem .ri-t{min-width:0;}
@@ -188,7 +201,11 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
   #jobRail.railon{display:block;}
   #jobStrip{display:none;}
 }
-.calc-panel{position:fixed; right:12px; top:calc(env(safe-area-inset-top,0px) + 118px); z-index:46; width:238px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 30px rgba(16,30,66,.25); padding:10px; display:none;}
+@media(min-width:1280px){
+  #notesFab{display:none !important;}
+  #notesPanel{display:block !important;}
+}
+.calc-panel{position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 74px); z-index:47; width:238px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 30px rgba(16,30,66,.25); padding:10px; display:none;}
 .calc-panel input{width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; font-size:17px; text-align:right; font-family:'Inter'; font-variant-numeric:tabular-nums; color:var(--ink);}
 .calc-panel input:focus{outline:none; border-color:var(--deep);}
 .calc-ans{font-size:11.5px; color:var(--hint); text-align:right; min-height:16px; margin:4px 2px 6px; font-variant-numeric:tabular-nums; word-break:break-all;}
@@ -356,8 +373,15 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 </div>
 
 <!-- floating calculator (entry page) -->
-<button class="calc-fab" id="calcFab" title="Calculator" type="button">Calculator</button>
 <div id="jobRail"></div>
+<button class="calc-fab" id="notesFab" title="Notes" type="button" style="top:calc(env(safe-area-inset-top,0px) + 66px);">Notes</button>
+<div id="notesPanel">
+  <div class="card" style="margin-top:0;">
+    <div class="card-h" style="position:sticky; top:0; z-index:5;"><h2>Notes</h2>
+      <button class="btn btn-sm btn-navy" id="btnAddNote" type="button" style="margin-left:auto; padding:5px 11px;">&#43; New</button></div>
+    <div class="card-b" style="padding:10px 10px 12px;"><div id="notesList"></div></div>
+  </div>
+</div>
 <div class="calc-panel" id="calcPanel">
   <input id="calcIn" inputmode="decimal" placeholder="0" autocomplete="off">
   <div class="calc-ans" id="calcAns"></div>
@@ -414,7 +438,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.1.2.8";
+const APP_VERSION = "V.1.3.3";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -466,6 +490,12 @@ async function loadState(){
     if(braw == null) braw = localStorage.getItem("bv_boats_v1");
     if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; }
   } catch(e){ boats = []; }
+  try{
+    let nraw = null;
+    if(useIDB) nraw = await idbGet("notes");
+    if(nraw == null) nraw = localStorage.getItem("bv_notes_v1");
+    if(nraw){ const nd = JSON.parse(nraw); notes = nd.list || []; notesUpdatedAt = nd.updatedAt || 0; }
+  } catch(e){ notes = []; }
 }
 function updateTopMeter(){
   const el = document.getElementById("topMeter");
@@ -495,6 +525,7 @@ function migrate(j){
   MOVE_TIMES.forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
   if(j.incTimes == null) j.incTimes = true;
   if(j.vslTimes == null) j.vslTimes = false;
+  if(!Array.isArray(j.customTimes)) j.customTimes = [];
   if(j.incRate == null) j.incRate = false;
 }
 let boats = [];
@@ -522,6 +553,58 @@ function findBoat(name){
   const n = String(name || "").trim().toLowerCase();
   if(!n) return null;
   return boats.find(b => String(b.name || "").trim().toLowerCase() === n) || null;
+}
+let notes = [];
+let notesUpdatedAt = 0;
+let notesSaveT = null;
+function persistNotesLocal(){
+  const data = JSON.stringify({list: notes, updatedAt: notesUpdatedAt});
+  if(useIDB){ idbSet("notes", data).catch(()=>{}); }
+  else { try{ localStorage.setItem("bv_notes_v1", data); }catch(e){} }
+}
+function persistNotes(){
+  notesUpdatedAt = Date.now();
+  persistNotesLocal();
+  if(fb.on && fb.db){
+    fb.db.collection("users").doc(fb.uid).collection("meta").doc("notes")
+      .set({list: JSON.parse(JSON.stringify(notes)), updatedAt: notesUpdatedAt})
+      .catch(()=>{});
+  }
+}
+function fitNote(t){
+  t.style.height = "auto";
+  const want = t.scrollHeight + 2;
+  const cap = (document.activeElement === t) ? 320 : 170;
+  t.style.height = Math.min(want, cap) + "px";
+  t.style.overflowY = want > cap ? "auto" : "hidden";
+}
+function sortedNotes(){
+  return notes.slice().sort((a,b)=> ((b.pinned?1:0) - (a.pinned?1:0)) || ((b.createdAt||0) - (a.createdAt||0)));
+}
+function renderNotes(){
+  const list = document.getElementById("notesList");
+  if(!list) return;
+  const arr = sortedNotes();
+  list.innerHTML = arr.length ? arr.map(n =>
+    '<div class="notecard' + (n.pinned ? " pinned" : "") + '">' +
+      '<div class="nc-h"><span>' + esc(fmtDT(new Date(n.createdAt || 0))) + "</span>" +
+        '<button type="button" class="npin' + (n.pinned ? " on" : "") + '" data-npin="' + n.id + '" title="' + (n.pinned ? "Unpin" : "Pin to top") + '">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:block"><path d="M15 2l7 7-1.5 1.5-1-.5-4 4 .5 5-1.5 1.5-4-4-6 6-1.5-1.5 6-6-4-4L6.5 9l5 .5 4-4-.5-1z"/></svg></button>' +
+        '<button type="button" class="ndel" data-ndel="' + n.id + '" title="Delete note">&#215;</button></div>' +
+      '<textarea rows="1" data-ntext="' + n.id + '" placeholder="Type note&hellip;">' + esc(n.text || "") + "</textarea>" +
+    "</div>"
+  ).join("") : '<div class="empty" style="padding:14px 4px;">No notes yet.<br>Notes are shared across every job and every synced device.</div>';
+  list.querySelectorAll("textarea").forEach(fitNote);
+  list.querySelectorAll("[data-npin]").forEach(b => b.onclick = ()=>{
+    const n = notes.find(x => x.id === b.dataset.npin); if(!n) return;
+    n.pinned = !n.pinned; persistNotes(); renderNotes();
+  });
+  list.querySelectorAll("[data-ndel]").forEach(b => b.onclick = ()=>{
+    const n = notes.find(x => x.id === b.dataset.ndel); if(!n) return;
+    if(!confirm("Delete this note?" + (n.text ? "\n\n" + n.text.slice(0,80) : ""))) return;
+    notes = notes.filter(x => x.id !== n.id);
+    persistNotes(); renderNotes();
+  });
 }
 function persist(){
   const data = JSON.stringify(state.jobs);
@@ -658,6 +741,10 @@ function initAutoDate(j){
   let maxT = null;
   MOVE_TIMES.forEach(f => {
     const t = parseFreeTime(j[f.k]);
+    if(t != null && (maxT == null || t > maxT)) maxT = t;
+  });
+  (j.customTimes || []).forEach(c => {
+    const t = parseFreeTime(c && c.value);
     if(t != null && (maxT == null || t > maxT)) maxT = t;
   });
   state.autoDate = fmtDateOnly(maxT != null ? new Date(maxT) : new Date());
@@ -851,7 +938,9 @@ function show(view){
   const bar = document.getElementById("actbar"), barIn = document.getElementById("actbarIn");
   if(view === "edit"){
     bar.style.display = "";
-    barIn.innerHTML = '<button class="btn btn-navy" id="abPreview">Preview &amp; send &nbsp;&#8250;</button>';
+    barIn.innerHTML = '<button class="btn btn-gold" id="abCalc" style="flex:0 0 auto;">Calculator</button>' +
+      '<button class="btn btn-navy" id="abPreview">Preview &amp; send &nbsp;&#8250;</button>';
+    document.getElementById("abCalc").onclick = toggleCalc;
     document.getElementById("abPreview").onclick = ()=>{ renderPreview(); show("preview"); };
     requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
   } else if(view === "preview"){
@@ -865,7 +954,7 @@ function show(view){
     bar.style.display = "none";
   }
   if(view !== "edit") clearInterval(state._mapCdI);
-  document.getElementById("calcFab").style.display = (view === "edit") ? "flex" : "none";
+  document.getElementById("notesFab").style.display = "flex";
   if(view !== "edit") document.getElementById("calcPanel").style.display = "none";
   document.getElementById("jobRail").classList.toggle("railon", view === "edit" || view === "preview");
   window.scrollTo(0,0);
@@ -1051,11 +1140,31 @@ function renderTimes(j){
     seq.push(list[i]);
     if(list[i + half]) seq.push(list[i + half]);
   }
-  document.getElementById("secTimes").innerHTML = seq.map(f => fieldHTML(f, j[f.k])).join("");
+  const customHTML = (j.customTimes || []).map((c, ci) =>
+    '<div class="fld">' +
+      '<input data-ci="' + ci + '" data-ck="label" value="' + esc(c.label || "") + '" placeholder="CUSTOM LABEL" style="margin-bottom:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--label); border:1px dashed var(--line); border-radius:7px; padding:6px 9px; width:100%; min-width:0;">' +
+      '<div class="row"><input data-ci="' + ci + '" data-ck="value" value="' + esc(c.value || "") + '" placeholder="7/30/26 1510">' +
+      '<button class="sbtn" type="button" data-cdel="' + ci + '" title="Remove custom time" style="color:var(--red); border-color:#F0C4CA;">&#215;</button></div>' +
+    "</div>").join("");
+  document.getElementById("secTimes").innerHTML = seq.map(f => fieldHTML(f, j[f.k])).join("") + customHTML;
+  document.querySelectorAll("#secTimes [data-cdel]").forEach(b => b.onclick = ()=>{
+    const jj = activeJob(); if(!jj) return;
+    if(!confirm("Remove this custom time?")) return;
+    jj.customTimes.splice(+b.dataset.cdel, 1);
+    jj.updatedAt = Date.now(); persist(); renderTimes(jj);
+  });
   initAutoDate(j);
   updateAutoChip();
   document.getElementById("vslTimesRow").innerHTML =
-    '<label class="toggle' + (j.vslTimes ? " on" : "") + '"><input type="checkbox" id="cbVslTimes"' + (j.vslTimes ? " checked" : "") + ">Include vessel times</label>";
+    '<label class="toggle' + (j.vslTimes ? " on" : "") + '"><input type="checkbox" id="cbVslTimes"' + (j.vslTimes ? " checked" : "") + ">Include vessel times</label>" +
+    ' <button class="btn btn-sm" type="button" id="btnAddCT" style="margin-left:6px">&#43; Custom time</button>';
+  document.getElementById("btnAddCT").onclick = ()=>{
+    const jj = activeJob(); if(!jj) return;
+    jj.customTimes.push({id: uid(), label: "", value: ""});
+    jj.updatedAt = Date.now(); persist(); renderTimes(jj);
+    const labels = document.querySelectorAll('#secTimes [data-ck="label"]');
+    if(labels.length) labels[labels.length - 1].focus();
+  };
   document.getElementById("cbVslTimes").onchange = (e)=>{
     const jj = activeJob(); if(!jj) return;
     jj.vslTimes = e.target.checked; jj.updatedAt = Date.now(); persist();
@@ -1113,6 +1222,11 @@ document.getElementById("view-edit").addEventListener("input", (e)=>{
     j.emails[+ds.ei][ds.ek] = e.target.value;
     j.updatedAt = Date.now(); persist(); return;
   }
+  if(ds.ci != null && ds.ck){
+    const c = j.customTimes[+ds.ci];
+    if(c){ c[ds.ck] = e.target.value; j.updatedAt = Date.now(); persist(); }
+    return;
+  }
   if(!ds.k) return;
   j[ds.k] = e.target.value; j.updatedAt = Date.now();
   persist(); refreshCalcs();
@@ -1141,6 +1255,26 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
   if(ds.ei != null && ds.ek === "ref"){
     const v = normRef(e.target.value);
     e.target.value = v; j.emails[+ds.ei].ref = v; j.updatedAt = Date.now(); persist();
+    return;
+  }
+  if(ds.ci != null && ds.ck === "value"){
+    const c = j.customTimes[+ds.ci];
+    if(c){
+      const tv = String(e.target.value || "").trim();
+      if(tv){
+        let hhmm = null;
+        const mcolon = tv.match(/^(\d{1,2}):(\d{2})$/);
+        if(mcolon) hhmm = mcolon[1].padStart(2, "0") + mcolon[2];
+        else if(/^\d{3,4}$/.test(tv)) hhmm = tv.padStart(4, "0");
+        if(hhmm){
+          c.value = state.autoDate + " " + hhmm;
+          e.target.value = c.value; j.updatedAt = Date.now(); persist();
+        } else {
+          const t = parseFreeTime(tv);
+          if(t != null){ state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip(); }
+        }
+      }
+    }
     return;
   }
   if(k && MT_KEYS.has(k)){
@@ -1301,15 +1435,18 @@ function parseFreeTime(s){
   return isNaN(d) ? null : d.getTime();
 }
 function timeRows(fields, j){
-  return fields.map((f,i) => ({f, i, v: j[f.k], t: parseFreeTime(j[f.k])}))
-    .filter(x => x.v && String(x.v).trim())
+  const items = fields.map((f,i) => ({l: f.l, i, v: j[f.k], t: parseFreeTime(j[f.k])}));
+  (j.customTimes || []).forEach((c, ci) => {
+    items.push({l: (c.label && c.label.trim()) ? c.label.trim() : "Custom", i: 1000 + ci, v: c.value, t: parseFreeTime(c.value)});
+  });
+  return items.filter(x => x.v && String(x.v).trim())
     .sort((a,b)=>{
       if(a.t == null && b.t == null) return a.i - b.i;
       if(a.t == null) return 1;
       if(b.t == null) return -1;
       return (a.t - b.t) || (a.i - b.i);
     })
-    .map(x => '<div class="tl"><b>' + esc(x.f.l) + ":</b><span>" + esc(x.v) + "</span></div>").join("");
+    .map(x => '<div class="tl"><b>' + esc(x.l) + ":</b><span>" + esc(x.v) + "</span></div>").join("");
 }
 function docHTML(j){
   const v = computeVol(j);
@@ -1691,16 +1828,43 @@ document.getElementById("importFile").addEventListener("change", (e)=>{
 });
 document.getElementById("miNew").onclick = ()=>{ hideMenu(); newJob(); };
 
-/* ================= floating calculator ================= */
-const calcFab = document.getElementById("calcFab");
+/* ================= calculator ================= */
 const calcPanel = document.getElementById("calcPanel");
 const calcIn = document.getElementById("calcIn");
 const calcAns = document.getElementById("calcAns");
-calcFab.onclick = ()=>{
+const notesPanel = document.getElementById("notesPanel");
+const notesFab = document.getElementById("notesFab");
+function toggleCalc(){
   const open = calcPanel.style.display === "block";
   calcPanel.style.display = open ? "none" : "block";
   if(!open) calcIn.focus();
+}
+notesFab.onclick = ()=>{
+  const open = notesPanel.style.display === "block";
+  notesPanel.style.display = open ? "none" : "block";
+  if(!open) renderNotes();
 };
+document.getElementById("btnAddNote").onclick = ()=>{
+  notes.unshift({id: uid(), text: "", createdAt: Date.now(), pinned: false});
+  persistNotes(); renderNotes();
+  const ta = document.querySelector("#notesList textarea");
+  if(ta) ta.focus();
+};
+document.getElementById("notesList").addEventListener("input", (e)=>{
+  const id = e.target.dataset && e.target.dataset.ntext;
+  if(!id) return;
+  const n = notes.find(x => x.id === id); if(!n) return;
+  n.text = e.target.value;
+  fitNote(e.target);
+  clearTimeout(notesSaveT);
+  notesSaveT = setTimeout(persistNotes, 500);
+});
+document.getElementById("notesList").addEventListener("focusin", (e)=>{
+  if(e.target.dataset && e.target.dataset.ntext) fitNote(e.target);
+});
+document.getElementById("notesList").addEventListener("focusout", (e)=>{
+  if(e.target.dataset && e.target.dataset.ntext) fitNote(e.target);
+});
 function calcSanitize(s){ return String(s).replace(/,/g,"").replace(/[^0-9+\-*/(). ]/g,""); }
 function calcEquals(){
   const expr = calcSanitize(calcIn.value).trim();
@@ -1843,6 +2007,17 @@ function startSync(){
       if(state.view === "edit") renderBoatCtl();
     }
   }, ()=>{});
+  const notesRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("notes");
+  if(fb.unsubNotes) fb.unsubNotes();
+  fb.unsubNotes = notesRef.onSnapshot(d => {
+    const dat = d.data();
+    if(dat && (dat.updatedAt || 0) > notesUpdatedAt){
+      notes = dat.list || [];
+      notesUpdatedAt = dat.updatedAt;
+      persistNotesLocal();
+      if(document.getElementById("notesPanel").style.display === "block") renderNotes();
+    }
+  }, ()=>{});
   fb.on = true; setSyncDot("on");
   schedulePush();
 }
@@ -1886,7 +2061,8 @@ document.getElementById("syncClose").onclick = ()=>{ syncOverlay.style.display =
 document.getElementById("syncOff").onclick = ()=>{
   if(fb.unsub) fb.unsub();
   if(fb.unsubBoats) fb.unsubBoats();
-  fb.on = false; fb.unsub = null; fb.unsubBoats = null;
+  if(fb.unsubNotes) fb.unsubNotes();
+  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
   setSyncDot("off");
@@ -2177,6 +2353,7 @@ loadState().then(()=>{
   renderJobs();
   show("jobs");
   updateTopMeter();
+  renderNotes();
   bootSync();
 });
 </script>
