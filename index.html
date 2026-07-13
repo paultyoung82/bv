@@ -135,6 +135,24 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .dsec.closed > *:not(.card-h){display:none;}
 .chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
 .dsec.closed .chev{transform:rotate(-90deg);}
+/* schedule timeline */
+#tlToggle{display:none;}
+.tlcard{position:absolute; border-radius:9px; padding:5px 8px; font-size:11.5px; line-height:1.5; cursor:pointer; overflow:hidden; border:1px solid rgba(16,30,66,.28); box-shadow:0 1px 3px rgba(16,30,66,.16); z-index:2;}
+.tlcard b{font-size:11.5px; display:block; white-space:nowrap;}
+.tlcard span{display:block; white-space:nowrap; opacity:.85; font-size:10.5px;}
+.tlcard.noetf{border-right:3px dashed rgba(16,30,66,.5);}
+.tlvday{position:absolute; top:0; bottom:0; border-left:1px solid var(--line); z-index:1;}
+.tlvnoon{position:absolute; top:0; bottom:0; border-left:1px dotted #E7EBF4; z-index:1;}
+.tlhead{position:sticky; top:0; background:#fff; z-index:4; border-bottom:1px solid var(--line);}
+.tlhead .thd{position:absolute; top:3px; font-size:10.5px; color:var(--label); font-weight:600; white-space:nowrap;}
+.tlhead .tht{position:absolute; top:20px; font-size:9.5px; color:#98A4BC; font-variant-numeric:tabular-nums;}
+.tlnow{position:absolute; top:0; bottom:0; border-left:2px solid var(--red); z-index:3;}
+.tlnow i{position:absolute; top:36px; left:-5px; width:8px; height:8px; background:var(--red); border-radius:50%;}
+@media(max-width:840px){
+  #tlToggle{display:inline-flex;}
+  #timelineWrap{display:none;}
+  #timelineWrap.open{display:block;}
+}
 /* notes */
 .notecard{border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px; background:#FBFCFE;}
 .notecard.pinned{border-color:var(--navy); background:#EDF3FC;}
@@ -262,6 +280,11 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <div class="pagetitle">Job Board</div>
     <button class="btn btn-navy btn-block" id="btnNewJob" style="margin-top:12px">&#43;&nbsp; New job</button>
     <div class="searchbox"><input id="jobSearch" placeholder="Search job#, vessel, barge&hellip;"></div>
+    <button class="btn btn-sm" id="tlToggle" style="margin-top:12px;">Timeline &#9662;</button>
+    <div class="card" id="timelineWrap">
+      <div class="card-h"><h2>Schedule timeline</h2><span class="tag" id="tlRange"></span></div>
+      <div id="tlBody" style="position:relative; overflow:auto; max-height:400px; background:#fff;"></div>
+    </div>
     <div id="jobList"></div>
     <div id="purgeWrap"></div>
   </div>
@@ -438,7 +461,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.1.3.6";
+const APP_VERSION = "V.2.0.3";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -699,6 +722,8 @@ const JOB_FIELDS = [
   {k:"sts",     l:"S/T(s)",          ph:"ex: 089"},
   {k:"vef",     l:"VEF",             ph:"ex: 0.9994", num:true},
   {k:"status",  l:"Status",          type:"select", opts:STATUSES},
+  {k:"jEta",    l:"ETA",             ph:"ex: 7/30/26 1510"},
+  {k:"jEtf",    l:"ETF (est. completion)", ph:"ex: 7/31/26 0600"},
   {k:"boatLink",l:"Boat link",       ph:"ex: https://www.vesselfinder.com/?imo=9467794", span:2, grow:true}
 ];
 /* Movement times — full sequence; grid flows down column 1 then column 2 */
@@ -733,7 +758,7 @@ const MOVE_TIMES = [
 function activeTimes(j){
   return (j && j.vslTimes) ? MOVE_TIMES : MOVE_TIMES.filter(f => !f.vsl);
 }
-const MT_KEYS = new Set(MOVE_TIMES.map(f => f.k));
+const MT_KEYS = new Set(MOVE_TIMES.map(f => f.k).concat(["jEta","jEtf"]));
 function fmtDateOnly(d){
   return (d.getMonth()+1) + "/" + d.getDate() + "/" + String(d.getFullYear()).slice(2);
 }
@@ -1002,7 +1027,106 @@ document.getElementById("btnBack").onclick = ()=>{
 };
 
 /* ================= jobs list ================= */
+function renderTimeline(){
+  const body = document.getElementById("tlBody");
+  const rangeEl = document.getElementById("tlRange");
+  if(!body) return;
+  const H = 3600000, dayMs = 24 * H;
+  const items = state.jobs
+    .map(j => ({j, s: parseFreeTime(j.jEta), e: parseFreeTime(j.jEtf)}))
+    .filter(x => x.s != null)
+    .map(x => {
+      const real = (x.e != null && x.e > x.s);
+      return {j: x.j, s: x.s, e: real ? x.e : x.s + 12 * H, real};
+    })
+    .sort((a,b)=>{
+      const sa = parseFloat(a.j.status), sb = parseFloat(b.j.status);
+      const na = isNaN(sa) ? 99 : sa, nb = isNaN(sb) ? 99 : sb;
+      if(na !== nb) return na - nb;
+      return a.s - b.s || a.e - b.e;
+    });
+  if(!items.length){
+    rangeEl.textContent = "";
+    body.innerHTML = '<div class="empty" style="padding:22px 12px;">Give a job an ETA (Job information section) and it appears here. Its ETF sets how far the card stretches across.</div>';
+    return;
+  }
+  const d0 = new Date(Math.min.apply(null, items.map(x => x.s)));
+  d0.setHours(0,0,0,0);
+  const start = d0.getTime();
+  const maxEnd = Math.max.apply(null, items.map(x => x.e));
+  const end = start + Math.ceil((maxEnd - start) / dayMs) * dayMs;
+  const PXH = 8, headerH = 34, rowH = 46, gap = 7, padL = 6;
+  const X = (t)=> padL + (t - start) / H * PXH;
+  const innerW = X(end) + 24;
+  const innerH = headerH + items.length * (rowH + gap) + 12;
+  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  let head = "", grid = "";
+  for(let t = start; t <= end; t += dayMs){
+    const x = X(t);
+    grid += '<div class="tlvday" style="left:' + x + 'px;"></div>';
+    head += '<div class="tht" style="left:' + (x + 3) + 'px;">0000</div>';
+    if(t < end){
+      const d = new Date(t);
+      head += '<div class="thd" style="left:' + (x + 4) + 'px;">' + (d.getMonth()+1) + "/" + d.getDate() + " " + DAYS[d.getDay()] + "</div>";
+      const nx = X(t + 12 * H);
+      grid += '<div class="tlvnoon" style="left:' + nx + 'px;"></div>';
+      head += '<div class="tht" style="left:' + (nx + 3) + 'px;">1200</div>';
+    }
+  }
+  let nowH = "";
+  const now = Date.now();
+  if(now >= start && now <= end){
+    nowH = '<div class="tlnow" style="left:' + X(now) + 'px;"><i></i></div>';
+  }
+  let cards = "";
+  const mctx = document.createElement("canvas").getContext("2d");
+  items.forEach((x, idx) => {
+    const j = x.j;
+    const code = String(j.status || "").split(" ")[0];
+    const c = STATUS_COLORS[code] || {bg:"#ECEFF4", fg:"#3A4358"};
+    const left = X(x.s);
+    const top = headerH + idx * (rowH + gap) + 6;
+    const bgs = (j.barges && j.barges.trim() && j.barges.trim() !== "-") ? " (" + j.barges.trim() + ")" : "";
+    const l1 = (j.vessel || "Untitled") + bgs + (j.port && String(j.port).trim() ? " - " + j.port.trim() : "");
+    const l2 = (j.jobNo ? j.jobNo + " - " : "") + (j.jEta || "");
+    mctx.font = "600 11.5px Inter, sans-serif";
+    const tw1 = mctx.measureText(l1).width;
+    mctx.font = "10.5px Inter, sans-serif";
+    const tw2 = mctx.measureText(l2).width;
+    const w = Math.max((x.e - x.s) / H * PXH, Math.ceil(Math.max(tw1, tw2)) + 20);
+    cards += '<div class="tlcard' + (x.real ? "" : " noetf") + '" data-tl="' + j.id + '" style="left:' + left + 'px; top:' + top + 'px; width:' + w + 'px; height:' + rowH + 'px; background:' + c.bg + '; color:' + c.fg + ';" title="' + esc(l1) + '">' +
+      "<b>" + esc(l1) + "</b><span>" + esc(l2) + "</span></div>";
+  });
+  const prevL = body.scrollLeft, prevT = body.scrollTop;
+  body.innerHTML = '<div style="position:relative; width:' + innerW + 'px; min-width:100%; height:' + innerH + 'px;">' +
+    '<div class="tlhead" style="height:' + headerH + 'px; width:' + innerW + 'px;">' + head + "</div>" +
+    grid + nowH + cards + "</div>";
+  const r0 = new Date(start), r1 = new Date(end - dayMs);
+  rangeEl.textContent = (r0.getMonth()+1) + "/" + r0.getDate() + " \u2013 " + (r1.getMonth()+1) + "/" + r1.getDate();
+  body.querySelectorAll("[data-tl]").forEach(el => el.onclick = ()=> openJob(el.dataset.tl));
+  if(prevL > 0 || prevT > 0){
+    /* re-render mid-session (status change etc.): stay where the user scrolled */
+    body.scrollLeft = prevL; body.scrollTop = prevT;
+  } else {
+    /* default view: today; if every job is older than today, the latest ETA's day */
+    const tday = new Date(); tday.setHours(0,0,0,0);
+    let target = tday.getTime();
+    if(target > end - dayMs){
+      const lastEta = Math.max.apply(null, items.map(x => x.s));
+      const ld = new Date(lastEta); ld.setHours(0,0,0,0);
+      target = ld.getTime();
+    }
+    if(target < start) target = start;
+    body.scrollLeft = Math.max(0, X(target) - padL);
+  }
+}
+document.getElementById("tlToggle").onclick = ()=>{
+  const w = document.getElementById("timelineWrap");
+  const open = w.classList.toggle("open");
+  document.getElementById("tlToggle").innerHTML = "Timeline " + (open ? "&#9652;" : "&#9662;");
+};
 function renderJobs(){
+  renderTimeline();
   const q = (document.getElementById("jobSearch").value || "").toLowerCase();
   const list = document.getElementById("jobList");
   const jobs = state.jobs.slice().sort((a,b)=>{
@@ -1017,7 +1141,10 @@ function renderJobs(){
     return;
   }
   list.innerHTML = jobs.map(j => {
-    const sub = [j.jobNo, j.operation, j.cargo, j.port].filter(x => x && String(x).trim()).map(esc).join(" &middot; ");
+    const subParts = [j.jobNo, j.operation, j.cargo, j.port].filter(x => x && String(x).trim()).map(esc);
+    if(j.jEta && String(j.jEta).trim()) subParts.push("ETA " + esc(j.jEta));
+    if(j.jEtf && String(j.jEtf).trim()) subParts.push("ETF " + esc(j.jEtf));
+    const sub = subParts.join(" &middot; ");
     const sel = '<select class="chipsel" data-sid="' + j.id + '" ' + chipStyle(j.status) + ">" +
       STATUSES.map(o => '<option value="' + esc(o) + '"' + (o===j.status?" selected":"") + ">" + esc(o) + "</option>").join("") +
       "</select>";
@@ -2182,10 +2309,11 @@ const HELP_USING = `
 <li><b>Change status without opening:</b> tap the colored status chip on the right of the row and pick from the list. The board re-sorts by status number immediately.</li>
 <li><b>New job:</b> the navy button at the top, above the search box. New jobs start at status 1.1 Pending.</li>
 <li><b>Search:</b> type any part of a job#, boat, barge, cargo, or port.</li>
+<li><b>Schedule timeline:</b> under the search box — every job with an ETA appears as a status-colored card placed on a horizontal time grid (dates across the top, midnight/noon marks below); the card stretches across to its ETF (a dashed right edge means no ETF yet, shown as a 12-hour block) and jobs stack down the board. The red line is now. Tap a card to open the job. On the phone the timeline sits behind the Timeline button.</li>
 <li><b>Delete all completed:</b> when any job sits at 8.0 Job Completed, a red button appears under the list — one confirm deletes them all. Export a backup first (menu &#8942;) if you want to keep records.</li>
 </ul>
 <h3>2. Job Information section</h3>
-<p>Fill BV Job#, Vsl/Boat name, Barge(s) (use a dash if none), Operation (LOAD / DISCH / XFER — this drives the volume math), Cargo, Port, S/T(s), VEF, Status, and the Boat link. The VEF formats itself to four decimal places when you leave the field.</p>
+<p>Fill BV Job#, Vsl/Boat name, Barge(s) (use a dash if none), Operation (LOAD / DISCH / XFER — this drives the volume math), Cargo, Port, S/T(s), VEF, Status, ETA, ETF, and the Boat link. The VEF formats itself to four decimal places when you leave the field. ETA and ETF use the same free date-time format as Movement Times (bare times pick up the auto-date) and place the job on the Job Board schedule timeline.</p>
 <h4>Saved boats</h4>
 <ul>
 <li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
