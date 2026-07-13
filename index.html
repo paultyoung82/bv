@@ -438,7 +438,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.1.3.3";
+const APP_VERSION = "V.1.3.6";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -758,7 +758,7 @@ const VOL_FIELDS = [
   {k:"vArr",   l:"Vsl/Bg arrival", num:true, ph:"ex: 351,073.06", fmt:true},
   {k:"vDpt",   l:"Vsl/Bg departure", num:true, ph:"ex: 0.00", fmt:true}
 ];
-const FMT_DP = {vShore:2, vArr:2, vDpt:2, vef:4};
+const FMT_DP = {vShore:2, vArr:2, vDpt:2, vef:4, e1Total:2, e1Loaded:2, e1Rate:2, e2Qty:2, e2Rate:2, rQty:2};
 const ETF1_FIELDS = [
   {k:"e1AsOf",  l:"Qty loaded as of", type:"datetime-local"},
   {k:"e1Total", l:"Total quantity", num:true, ph:"ex: 165,000"},
@@ -875,6 +875,42 @@ function computeRate(j){
   const hours = (b - a)/3600000;
   if(hours <= 0) return {hours, rate:null};
   return {hours, rate: qty/hours};
+}
+function toDTL(t){
+  const d = new Date(t);
+  const p2 = (n)=> String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p2(d.getMonth()+1) + "-" + p2(d.getDate()) + "T" + p2(d.getHours()) + ":" + p2(d.getMinutes());
+}
+/* Commenced/Completed Operations -> COMM/COMP load-disch (until manually edited) */
+function syncRateTimes(j){
+  let changed = false;
+  [["comm","rComm"],["comp","rComp"]].forEach(pair => {
+    const src = pair[0], dst = pair[1];
+    const t = parseFreeTime(j[src]);
+    const v = (t == null) ? "" : toDTL(t);   /* deleted source clears the rate field too */
+    if(j[dst] !== v){
+      j[dst] = v;
+      const el = document.querySelector('#view-edit [data-k="' + dst + '"]');
+      if(el) el.value = v;
+      changed = true;
+    }
+  });
+  if(changed){ j.updatedAt = Date.now(); persist(); refreshCalcs(); }
+}
+/* Quantity <- Shore figure, else Vsl/Bg figure (w/VEF when a VEF is set) */
+function syncRateQty(j){
+  const v = computeVol(j);
+  let q = null;
+  if(v.shore != null) q = v.shore;
+  else if(v.vef && v.wDiff != null) q = v.wDiff;
+  else if(v.diff != null) q = v.diff;
+  const str = (q == null) ? "" : q.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+  if(j.rQty !== str){
+    j.rQty = str;
+    const el = document.querySelector('#view-edit [data-k="rQty"]');
+    if(el) el.value = str;
+    j.updatedAt = Date.now(); persist(); refreshCalcs();
+  }
 }
 function normRef(v){
   let t = String(v || "").trim();
@@ -1080,6 +1116,8 @@ function renderEditor(){
     document.querySelector('[data-k="asOf"]').value = jj.asOf;
   };
   refreshCalcs();
+  syncRateTimes(j);
+  syncRateQty(j);
   const hasVal = (fields)=> fields.some(f => j[f.k] && String(j[f.k]).trim());
   document.getElementById("dsecEtf1").classList.toggle("closed", !hasVal(ETF1_FIELDS));
   document.getElementById("dsecEtf2").classList.toggle("closed", !hasVal(ETF2_FIELDS));
@@ -1230,6 +1268,7 @@ document.getElementById("view-edit").addEventListener("input", (e)=>{
   if(!ds.k) return;
   j[ds.k] = e.target.value; j.updatedAt = Date.now();
   persist(); refreshCalcs();
+  if(ds.k === "vShore" || ds.k === "vArr" || ds.k === "vDpt" || ds.k === "vef") syncRateQty(j);
   if(ds.k === "vessel"){
     const bMatch = findBoat(e.target.value);
     if(bMatch && bMatch.link && bMatch.link.trim() && bMatch.link.trim() !== String(j.boatLink||"").trim()){
@@ -1279,28 +1318,34 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
   }
   if(k && MT_KEYS.has(k)){
     const tv = String(e.target.value || "").trim();
-    if(!tv) return;
-    let hhmm = null;
-    const mcolon = tv.match(/^(\d{1,2}):(\d{2})$/);
-    if(mcolon) hhmm = mcolon[1].padStart(2, "0") + mcolon[2];
-    else if(/^\d{3,4}$/.test(tv)) hhmm = tv.padStart(4, "0");
-    if(hhmm){
-      const full = state.autoDate + " " + hhmm;
-      e.target.value = full; j[k] = full;
-      j.updatedAt = Date.now(); persist();
-    } else {
-      const t = parseFreeTime(tv);
-      if(t != null){ state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip(); }
+    if(tv){
+      let hhmm = null;
+      const mcolon = tv.match(/^(\d{1,2}):(\d{2})$/);
+      if(mcolon) hhmm = mcolon[1].padStart(2, "0") + mcolon[2];
+      else if(/^\d{3,4}$/.test(tv)) hhmm = tv.padStart(4, "0");
+      if(hhmm){
+        const full = state.autoDate + " " + hhmm;
+        e.target.value = full; j[k] = full;
+        j.updatedAt = Date.now(); persist();
+      } else {
+        const t = parseFreeTime(tv);
+        if(t != null){ state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip(); }
+      }
     }
+    if(k === "comm" || k === "comp") syncRateTimes(j);
     return;
   }
   if(!k || !(k in FMT_DP)) return;
   const n = pNum(e.target.value);
-  if(n == null) return;
+  if(n == null){
+    syncRateQty(j);   /* cleared or text (ACTIVE) source -> quantity recomputes or clears */
+    return;
+  }
   const dp = FMT_DP[k];
   const formatted = n.toLocaleString("en-US",{minimumFractionDigits:dp, maximumFractionDigits:dp});
   e.target.value = formatted;
   j[k] = formatted; j.updatedAt = Date.now(); persist(); refreshCalcs();
+  if(k === "vShore" || k === "vArr" || k === "vDpt" || k === "vef") syncRateQty(j);
 });
 /* Enter moves DOWN to the field below in every section; Tab moves right (natural order) */
 document.getElementById("view-edit").addEventListener("keydown", (e)=>{
@@ -1475,11 +1520,25 @@ function docHTML(j){
       "</table></div>";
   }
   if(j.incEtf && (e1 || e2)){
-    h += '<div class="doc-sec"><h3>' + DOC_TITLES.etf + '</h3><div class="doc-etf">';
-    if(e1 && e1.etf) h += '<span><span class="k">ETF: </span><b>' + fmtDT(e1.etf) + "</b></span>" +
-      '<span><span class="k">Qty left: </span>' + fmtN(e1.left,0) + " @ " + fmtN(pNum(j.e1Rate),0) + "/hr</span>";
-    if(e2 && e2.etf) h += '<span><span class="k">ETF (fixed qty): </span><b>' + fmtDT(e2.etf) + "</b></span>";
-    h += "</div></div>";
+    const espan = (k, v)=> '<span><span class="k">' + k + ': </span>' + v + "</span>";
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.etf + '</h3>';
+    if(e1){
+      h += '<div class="doc-etf"' + (e2 ? ' style="margin-bottom:7px"' : "") + ">" +
+        espan("Qty loaded as of", fmtDT(parseDTL(j.e1AsOf))) +
+        espan("Total quantity", fmtN(pNum(j.e1Total))) +
+        espan("Quantity loaded", fmtN(pNum(j.e1Loaded))) +
+        espan("Rate/hr", fmtN(pNum(j.e1Rate))) +
+        '<span><span class="k">ETF: </span><b>' + (e1.etf ? fmtDT(e1.etf) : "&mdash;") + "</b></span>" +
+      "</div>";
+    }
+    if(e2){
+      h += '<div class="doc-etf">' +
+        espan("Quantity", fmtN(pNum(j.e2Qty))) +
+        espan("Rate/hr", fmtN(pNum(j.e2Rate))) +
+        '<span><span class="k">ETF: </span><b>' + (e2.etf ? fmtDT(e2.etf) : "&mdash;") + "</b></span>" +
+      "</div>";
+    }
+    h += "</div>";
   }
   const rr = computeRate(j);
   if(j.incRate && rr && rr.rate != null){
