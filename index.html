@@ -150,8 +150,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .tlnow i{position:absolute; top:36px; left:-5px; width:8px; height:8px; background:var(--red); border-radius:50%;}
 @media(max-width:840px){
   #tlToggle{display:inline-flex;}
-  #timelineWrap{display:none;}
-  #timelineWrap.open{display:block;}
+  #timelineWrap.tlhide{display:none;}
 }
 /* notes */
 .notecard{border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px; background:#FBFCFE;}
@@ -266,6 +265,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
   <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
     <div class="card-h"><h2>Saved boats</h2><span class="tag" id="boatCount"></span></div>
     <div class="card-b">
+      <div class="searchbox" style="margin-bottom:10px"><input id="boatSearch" placeholder="Search boats&hellip;"></div>
       <div id="boatEditList"></div>
       <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="boatClose" style="margin-left:auto">Close</button></div>
       <p class="hintline">Edits save when you leave a field. Deleting a saved boat never changes any job.</p>
@@ -280,10 +280,10 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <div class="pagetitle">Job Board</div>
     <button class="btn btn-navy btn-block" id="btnNewJob" style="margin-top:12px">&#43;&nbsp; New job</button>
     <div class="searchbox"><input id="jobSearch" placeholder="Search job#, vessel, barge&hellip;"></div>
-    <button class="btn btn-sm" id="tlToggle" style="margin-top:12px;">Timeline &#9662;</button>
+    <button class="btn btn-sm" id="tlToggle" style="margin-top:12px;">Hide timeline &#9652;</button>
     <div class="card" id="timelineWrap">
       <div class="card-h"><h2>Schedule timeline</h2><span class="tag" id="tlRange"></span></div>
-      <div id="tlBody" style="position:relative; overflow:auto; max-height:400px; background:#fff;"></div>
+      <div id="tlBody" style="position:relative; overflow:auto; background:#fff;"></div>
     </div>
     <div id="jobList"></div>
     <div id="purgeWrap"></div>
@@ -461,7 +461,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.0.3";
+const APP_VERSION = "V.2.0.8";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -511,7 +511,7 @@ async function loadState(){
     let braw = null;
     if(useIDB) braw = await idbGet("boats");
     if(braw == null) braw = localStorage.getItem("bv_boats_v1");
-    if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; }
+    if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; sortBoats(); }
   } catch(e){ boats = []; }
   try{
     let nraw = null;
@@ -558,7 +558,11 @@ function persistBoatsLocal(){
   if(useIDB){ idbSet("boats", data).catch(()=>{}); }
   else { try{ localStorage.setItem("bv_boats_v1", data); }catch(e){} }
 }
+function sortBoats(){
+  boats.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), undefined, {sensitivity:"base"}));
+}
 function persistBoats(){
+  sortBoats();
   boatsUpdatedAt = Date.now();
   persistBoatsLocal();
   if(fb.on && fb.db){
@@ -960,6 +964,17 @@ function buildSubject(j, refVal){
 }
 
 /* ================= VesselFinder ================= */
+function isVFLink(link){
+  const t = String(link || "").trim();
+  if(!t) return true;                      /* empty is fine — just no map */
+  if(!vfIds(t)) return false;              /* must contain a readable IMO or MMSI */
+  const m = t.match(/^(?:https?:\/\/)?([^\/\s?#]+)/i);
+  if(m && m[1].indexOf(".") > -1){         /* looks like a URL: host must be VesselFinder */
+    const host = m[1].toLowerCase();
+    if(host !== "vesselfinder.com" && !host.endsWith(".vesselfinder.com")) return false;
+  }
+  return true;
+}
 function vfIds(link){
   if(!link) return null;
   let m = String(link).match(/[?&]imo=(\d{7})/i);
@@ -979,7 +994,7 @@ function vfEmbed(ids){
   const doc = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
     + '<body style="margin:0; overflow:hidden">'
     + '<scr' + 'ipt type="text/javascript">'
-    + 'var width="100%";var height="480";var zoom="9";var names=false;'
+    + 'var width="100%";var height="480";var zoom="13";var names=false;'
     + idVar
     + 'var show_track=false;'
     + '</scr' + 'ipt>'
@@ -1047,6 +1062,7 @@ function renderTimeline(){
     });
   if(!items.length){
     rangeEl.textContent = "";
+    body.style.maxHeight = "";
     body.innerHTML = '<div class="empty" style="padding:22px 12px;">Give a job an ETA (Job information section) and it appears here. Its ETF sets how far the card stretches across.</div>';
     return;
   }
@@ -1097,6 +1113,7 @@ function renderTimeline(){
     cards += '<div class="tlcard' + (x.real ? "" : " noetf") + '" data-tl="' + j.id + '" style="left:' + left + 'px; top:' + top + 'px; width:' + w + 'px; height:' + rowH + 'px; background:' + c.bg + '; color:' + c.fg + ';" title="' + esc(l1) + '">' +
       "<b>" + esc(l1) + "</b><span>" + esc(l2) + "</span></div>";
   });
+  body.style.maxHeight = (headerH + Math.min(items.length, 5) * (rowH + gap) + 18) + "px";
   const prevL = body.scrollLeft, prevT = body.scrollTop;
   body.innerHTML = '<div style="position:relative; width:' + innerW + 'px; min-width:100%; height:' + innerH + 'px;">' +
     '<div class="tlhead" style="height:' + headerH + 'px; width:' + innerW + 'px;">' + head + "</div>" +
@@ -1122,8 +1139,9 @@ function renderTimeline(){
 }
 document.getElementById("tlToggle").onclick = ()=>{
   const w = document.getElementById("timelineWrap");
-  const open = w.classList.toggle("open");
-  document.getElementById("tlToggle").innerHTML = "Timeline " + (open ? "&#9652;" : "&#9662;");
+  const hidden = w.classList.toggle("tlhide");
+  document.getElementById("tlToggle").innerHTML = hidden ? "Show timeline &#9662;" : "Hide timeline &#9652;";
+  if(!hidden) renderTimeline();   /* re-apply the today-scroll after unhiding */
 };
 function renderJobs(){
   renderTimeline();
@@ -1265,6 +1283,10 @@ function renderBoatCtl(){
     const name = String(j.vessel || "").trim();
     if(!name){ toast("Enter a boat name first"); return; }
     const link = String(j.boatLink || "").trim();
+    if(link && !isVFLink(link)){
+      toast("Not saved \u2014 the boat link must be from vesselfinder.com");
+      return;
+    }
     const ex = findBoat(name);
     if(ex){ ex.name = name; ex.link = link; toast("Saved boat updated: " + name); }
     else { boats.push({id: uid(), name: name, link: link}); toast("Boat saved: " + name); }
@@ -1277,12 +1299,30 @@ function renderBoatOverlay(){
   document.getElementById("boatCount").textContent = boats.length + " saved";
   const box = document.getElementById("boatEditList");
   box.innerHTML = boats.length ? boats.map((b,i) =>
-    '<div class="boatrow">' +
+    '<div class="boatrow" data-bn="' + esc(String(b.name||"").toLowerCase()) + '">' +
       '<input class="bname" data-bi="' + i + '" data-bk="name" value="' + esc(b.name) + '" placeholder="Boat name">' +
       '<input class="blink" data-bi="' + i + '" data-bk="link" value="' + esc(b.link) + '" placeholder="https://www.vesselfinder.com/?mmsi=...">' +
+      '<button class="btn btn-sm btn-navy" type="button" data-buse="' + i + '" style="flex:0 0 auto; padding:8px 11px;">Use</button>' +
       '<button class="sbtn del" type="button" data-bdel="' + i + '" title="Delete">&#215;</button>' +
     "</div>"
   ).join("") : '<div class="empty">No saved boats yet. Open a job, fill Vsl/Boat name and Boat link, then press Save Boat.</div>';
+  box.querySelectorAll("[data-buse]").forEach(btn => btn.onclick = ()=>{
+    const j = activeJob();
+    if(!j){ toast("Open a job first, then pick a boat"); return; }
+    const b = boats[+btn.dataset.buse]; if(!b) return;
+    j.vessel = b.name || "";
+    j.boatLink = b.link || "";
+    j.updatedAt = Date.now(); persist();
+    const vi = document.querySelector('#secJob [data-k="vessel"]');
+    if(vi) vi.value = j.vessel;
+    const bl = document.querySelector('#secJob [data-k="boatLink"]');
+    if(bl){ bl.value = j.boatLink; autosize(bl); }
+    renderMapUI("edit");
+    renderJobNav();
+    document.getElementById("boatOverlay").style.display = "none";
+    toast("Boat set on this job: " + (b.name || ""));
+  });
+  applyBoatFilter();
   box.querySelectorAll("[data-bdel]").forEach(btn => btn.onclick = ()=>{
     const i = +btn.dataset.bdel;
     if(!confirm("Delete saved boat " + (boats[i] && boats[i].name ? boats[i].name : "") + "?")) return;
@@ -1293,9 +1333,23 @@ document.getElementById("boatEditList").addEventListener("change", (e)=>{
   const ds = e.target.dataset || {};
   if(ds.bi == null || !ds.bk) return;
   const b = boats[+ds.bi]; if(!b) return;
+  if(ds.bk === "link" && !isVFLink(e.target.value)){
+    e.target.style.borderColor = "var(--red)";
+    toast("That isn\u2019t a VesselFinder link \u2014 the map won\u2019t load from it");
+  } else if(ds.bk === "link"){
+    e.target.style.borderColor = "";
+  }
   b[ds.bk] = e.target.value;
   persistBoats();
+  if(ds.bk === "name") renderBoatOverlay();
 });
+function applyBoatFilter(){
+  const q = String((document.getElementById("boatSearch") || {}).value || "").trim().toLowerCase();
+  document.querySelectorAll("#boatEditList .boatrow").forEach(r => {
+    r.style.display = (!q || (r.dataset.bn || "").indexOf(q) > -1) ? "" : "none";
+  });
+}
+document.getElementById("boatSearch").addEventListener("input", applyBoatFilter);
 document.getElementById("boatClose").onclick = ()=>{ document.getElementById("boatOverlay").style.display = "none"; renderBoatCtl(); };
 function renderTimes(j){
   const list = activeTimes(j);
@@ -1409,6 +1463,7 @@ document.getElementById("view-edit").addEventListener("input", (e)=>{
     }
   }
   if(ds.k === "boatLink"){
+    e.target.style.borderColor = isVFLink(e.target.value) ? "" : "var(--red)";
     clearTimeout(state._mapT);
     state._mapT = setTimeout(()=> renderMapUI("edit"), 600);
   }
@@ -1441,6 +1496,10 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
         }
       }
     }
+    return;
+  }
+  if(k === "boatLink" && !isVFLink(e.target.value)){
+    toast("Only VesselFinder links work here \u2014 copy the vessel\u2019s URL from vesselfinder.com");
     return;
   }
   if(k && MT_KEYS.has(k)){
@@ -1692,9 +1751,10 @@ function renderMapUI(scope){
   const ids = vfIds(j.boatLink);
   if(!ids && !(j.boatLink && j.boatLink.trim())){ card.style.display = "none"; return; }
   card.style.display = "";
-  if(!ids){
+  if(!ids || !isVFLink(j.boatLink)){
     body.innerHTML = "";
-    ctl.innerHTML = '<span style="color:var(--hint)">Couldn\u2019t read an MMSI or IMO from the boat link. Paste a link like https://www.vesselfinder.com/?imo=9467794 or ?mmsi=367562810.</span>';
+    ctl.innerHTML = '<span style="color:var(--red); font-weight:600;">The live map only works with VesselFinder links.</span> ' +
+      '<span style="color:var(--hint)">Find the vessel on vesselfinder.com and paste that page\u2019s address \u2014 e.g. https://www.vesselfinder.com/?imo=9467794 or ?mmsi=367562810. Links from other tracking sites will not load.</span>';
     return;
   }
   const live = (scope === "edit");
@@ -1723,15 +1783,16 @@ function renderMapUI(scope){
 }
 function startMapCountdown(){
   clearInterval(state._mapCdI);
-  state._mapCd = 60;
+  state._mapCd = 180;   /* 3 minutes */
+  const fmtCd = (n)=> Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
   const cd = document.getElementById("mapCd");
-  if(cd) cd.textContent = "auto-refresh in 60s";
+  if(cd) cd.textContent = "auto-refresh in " + fmtCd(state._mapCd);
   state._mapCdI = setInterval(()=>{
     const el = document.getElementById("mapCd");
     if(state.view !== "edit" || !el){ clearInterval(state._mapCdI); return; }
     state._mapCd--;
     if(state._mapCd <= 0){ renderMapUI("edit"); return; }
-    el.textContent = "auto-refresh in " + state._mapCd + "s";
+    el.textContent = "auto-refresh in " + fmtCd(state._mapCd);
   }, 1000);
 }
 function mapAction(act, scope){
@@ -2188,6 +2249,7 @@ function startSync(){
     if(dat && (dat.updatedAt || 0) > boatsUpdatedAt){
       boats = dat.list || [];
       boatsUpdatedAt = dat.updatedAt;
+      sortBoats();
       persistBoatsLocal();
       renderBoatNames();
       if(state.view === "edit") renderBoatCtl();
@@ -2360,8 +2422,8 @@ const HELP_USING = `
 <p>Free text; line breaks are preserved. The <b>Update info as of</b> stamp resets to now every time you open the job (press Now to refresh it mid-session). Comments appear in the update image AND as the email body text under the as-of line.</p>
 <h3>8. Live vessel map</h3>
 <ul>
-<li>Paste any VesselFinder link — <code>?imo=</code>, <code>?mmsi=</code>, or a vessel-page address — and the live map appears within a second. Editing the link refreshes it.</li>
-<li>The map <b>auto-refreshes every 60 seconds</b>; the countdown shows next to the Refresh map button, which reloads immediately.</li>
+<li>Only <b>vesselfinder.com</b> links work — links from other tracking sites turn the field red and are refused by Save Boat. Paste any VesselFinder link — <code>?imo=</code>, <code>?mmsi=</code>, or a vessel-page address — and the live map appears within a second. Editing the link refreshes it.</li>
+<li>The map <b>auto-refreshes every 3 minutes</b>; the countdown shows next to the Refresh map button, which reloads immediately.</li>
 <li><b>Getting the map into the update image:</b> the live map cannot be captured automatically (browser security). On desktop, press <b>Capture map</b> and choose "This Tab" — one click. On the phone, screenshot the map, then press <b>Add map snapshot</b> and pick it from Photos, or <b>Paste</b> on desktop. The snapshot appears as a Vessel Position section at the bottom of the image and stays with the job until you Replace or Remove it.</li>
 </ul>
 <h3>9. Preview &amp; Send</h3>
