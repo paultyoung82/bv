@@ -461,7 +461,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.1.0";
+const APP_VERSION = "V.2.1.1";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -2388,6 +2388,10 @@ const menuPop = document.getElementById("menuPop");
 document.getElementById("btnMenu").onclick = (e)=>{
   e.stopPropagation();
   const opening = menuPop.style.display !== "block";
+  if(opening){
+    const r = document.getElementById("btnMenu").getBoundingClientRect();
+    menuPop.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
+  }
   menuPop.style.display = opening ? "block" : "none";
   if(opening) updateStorageMeter();
 };
