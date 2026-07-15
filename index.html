@@ -106,6 +106,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 @media(max-width:560px){.doc-grid{grid-template-columns:repeat(2,1fr)}}
 .doc-kv .k{font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#7B88A8;}
 .doc-kv .v{font-size:13.5px; font-weight:500; color:#17203A; font-variant-numeric:tabular-nums; word-break:break-word;}
+.doc-kv .v .bgline{display:block; white-space:nowrap;}
 .doc-times{columns:2; column-gap:26px;}
 @media(max-width:460px){.doc-times{columns:1}}
 .doc-times .tl{display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dotted #E7EBF4; font-size:13px; break-inside:avoid;}
@@ -535,7 +536,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.3";
+const APP_VERSION = "V.2.2.4";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -906,7 +907,7 @@ const RATE_FIELDS = [
 ];
 
 function blankJob(){
-  const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(),
+  const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(), customTimes: [],
     status:"1.1 Pending", incVol:true, incEtf:false, incTimes:true, incRate:false, asOf:"", comments:"", refNo:"", mapImg:"",
     emails:[{to:"", cc:"", subject:"", ref:"", relay:"*BV*"}], sendIdx:0 };
   [].concat(JOB_FIELDS, MOVE_TIMES, VOL_FIELDS, ETF1_FIELDS, ETF2_FIELDS, RATE_FIELDS)
@@ -1616,6 +1617,7 @@ function renderTimes(j){
     ' <button class="btn btn-sm" type="button" id="btnAddCT" style="margin-left:6px">&#43; Custom time</button>';
   document.getElementById("btnAddCT").onclick = ()=>{
     const jj = activeJob(); if(!jj) return;
+    if(!Array.isArray(jj.customTimes)) jj.customTimes = [];
     jj.customTimes.push({id: uid(), label: "", value: ""});
     jj.updatedAt = Date.now(); persist(); renderTimes(jj);
     const labels = document.querySelectorAll('#secTimes [data-ck="label"]');
@@ -1910,6 +1912,16 @@ function renderPreview(){
 function kv(label, value){
   return '<div class="doc-kv"><div class="k">' + esc(label) + '</div><div class="v">' + (esc(value) || "&mdash;") + "</div></div>";
 }
+/* barges separated by " / " print one per line in the update image */
+function kvBarges(label, value){
+  const raw = String(value == null ? "" : value).trim();
+  if(!raw) return kv(label, "");
+  const parts = raw.split("/").map(x => x.trim()).filter(Boolean);
+  const body = parts.length > 1
+    ? parts.map(x => '<div class="bgline">' + esc(x) + "</div>").join("")
+    : esc(raw);
+  return '<div class="doc-kv"><div class="k">' + esc(label) + '</div><div class="v">' + body + "</div></div>";
+}
 function parseFreeTime(s){
   s = String(s || "");
   let m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2})/);
@@ -1949,7 +1961,7 @@ function docHTML(j){
     '<div class="dm-right"><div class="dm-job">' + esc(j.jobNo || "") + '</div>' +
     '<div class="dm-asof">' + (j.asOf ? "Update as of " + esc(j.asOf) : "") + "</div></div></div>";
   h += '<div class="doc-sec"><div class="doc-grid">' +
-    kv("Vsl / Boat", j.vessel) + kv("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
+    kv("Vsl / Boat", j.vessel) + kvBarges("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
     kv("Port", j.port) + kv("S/T(s)", j.sts) + kv("VEF", j.vef) + kv("Status", j.status) +
     "</div></div>";
   const kt = j.incTimes !== false ? timeRows(activeTimes(j), j) : "";
@@ -2137,6 +2149,11 @@ async function captureMap(scope){
 }
 
 /* ================= quick job nav (rail + strip) ================= */
+function jobLabel(j){
+  const b = String(j.barges || "").trim();
+  if(b && b !== "-") return b;
+  return String(j.vessel || "").trim() || j.jobNo || "Untitled";
+}
 function navJobs(){
   return state.jobs.slice().sort((a,b)=>{
     const sa = parseFloat(a.status), sb = parseFloat(b.status);
@@ -2157,7 +2174,7 @@ function renderJobNav(){
   const strip = document.getElementById("jobStrip");
   strip.innerHTML = jobs.map(j =>
     '<button class="jchip' + (j.id === cur ? " on" : "") + '" data-nav="' + j.id + '">' +
-      statusDot(j.status) + esc(j.vessel || j.jobNo || "Untitled") + "</button>"
+      statusDot(j.status) + esc(jobLabel(j)) + "</button>"
   ).join("") + '<button class="jchip" data-navnew="1">&#43; New</button>';
   /* desktop rail */
   const rail = document.getElementById("jobRail");
@@ -2165,7 +2182,7 @@ function renderJobNav(){
     jobs.map(j =>
       '<button class="railitem' + (j.id === cur ? " on" : "") + '" data-nav="' + j.id + '">' +
         statusDot(j.status) +
-        '<span class="ri-t"><span class="ri-v">' + esc(j.vessel || j.jobNo || "Untitled") + '</span><br>' +
+        '<span class="ri-t"><span class="ri-v">' + esc(jobLabel(j)) + '</span><br>' +
         '<span class="ri-j">' + esc(j.jobNo || "") + "</span></span>" +
       "</button>"
     ).join("") +
@@ -2964,17 +2981,17 @@ const HELP_PA = `
 </ol>
 <h4>B15 &mdash; Condition: does this job&rsquo;s folder exist? (create it if not)</h4>
 <ol>
-<li>Click <b>+ New step</b> (AFTER the ParentExists condition, back at the main level — drag the card there if it lands inside a branch), search <code>condition</code>, click <b>Condition</b>. Rename it <code>JobFolderExists</code>.</li>
+<li>Look at your flow — the last card is <b>MatchJob</b>. Click the <b>+</b> directly underneath MatchJob and choose <b>Add an action</b>. <b>Nothing you have already built moves or gets dragged.</b> The new card simply lands at the bottom, below MatchJob, on the main line of the flow (not inside the ParentExists branches). If your flow already shows GetJobFolders and MatchJob sitting below the ParentExists box, it is correct — just add the condition next.</li><li>Search <code>condition</code>, click <b>Condition</b> (Control). Rename it <code>JobFolderExists</code> (&#8943; &#8594; Rename). It appears below MatchJob with its own empty TRUE and FALSE branches.</li>
 <li>Left box &#8594; Expression tab &#8594; paste <span class="hcode">length(body('MatchJob'))</span> &#8594; OK. Middle: <b>is greater than</b>. Right: <code>0</code></li>
-<li>TRUE branch &#8594; Add an action &#8594; <b>Set variable</b>. Name: <b>JobFolderId</b>. Value &#8594; Expression &#8594; <span class="hcode">first(body('MatchJob'))?['id']</span></li>
-<li>FALSE branch &#8594; Add an action &#8594; <b>Send an HTTP request</b> (Office 365 Outlook). Rename <code>CreateJobFolder</code>. Method: <b>POST</b>.</li>
+<li>Inside the <b>TRUE (If yes)</b> branch of this NEW JobFolderExists condition &#8594; <b>Add an action</b> &#8594; <b>Set variable</b>. Name dropdown: <b>JobFolderId</b>. Value &#8594; Expression tab &#8594; <span class="hcode">first(body('MatchJob'))?['id']</span></li>
+<li>Inside the <b>FALSE (If no)</b> branch of JobFolderExists &#8594; <b>Add an action</b> &#8594; <b>Send an HTTP request</b> (Office 365 Outlook). Rename it <code>CreateJobFolder</code>. Method dropdown: <b>POST</b>.</li>
 <li>CreateJobFolder URI &#8594; Expression tab &#8594; paste <span class="hcode">concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders')</span> &#8594; OK.</li>
 <li>CreateJobFolder Body — this mixes text and an expression: type <code>{"displayName": "</code> then WITHOUT closing the popup click the <b>Expression</b> tab, paste <span class="hcode">outputs('RefDigits')</span>, click OK, then type <code>"}</code> after the fx chip.</li>
-<li>Still in the FALSE branch &#8594; Add an action &#8594; <b>Set variable</b>. Name: <b>JobFolderId</b>. Value &#8594; Expression &#8594; <span class="hcode">body('CreateJobFolder')?['id']</span></li>
+<li>Still inside that same FALSE branch, BELOW the CreateJobFolder card &#8594; <b>Add an action</b> &#8594; <b>Set variable</b>. Name: <b>JobFolderId</b>. Value &#8594; Expression tab &#8594; <span class="hcode">body('CreateJobFolder')?['id']</span></li>
 </ol>
 <h4>B16 &mdash; Action: CopyMail (copies the email into the job folder)</h4>
 <ol>
-<li>Click <b>+ New step</b> after the JobFolderExists condition (main level), search <code>send an http request</code>, click <b>Send an HTTP request</b> (Office 365 Outlook). Rename it <code>CopyMail</code>.</li>
+<li>Scroll to the very BOTTOM of the flow, below the whole JobFolderExists condition box — not inside either of its branches. Click the <b>+</b> there &#8594; <b>Add an action</b>. Again: nothing moves; this lands last, on the main line.</li><li>Search <code>send an http request</code>, click <b>Send an HTTP request</b> (Office 365 Outlook). Rename it <code>CopyMail</code>.</li><li>Sanity check — top to bottom your flow reads: SplitSubject, FindRef, RefNumber, RefDigits, GetTopFolders, MatchParent, <b>ParentExists</b> (branches inside), GetJobFolders, MatchJob, <b>JobFolderExists</b> (branches inside), CopyMail. Both conditions sit on the main line; only Set variable / CreateParent / CreateJobFolder live inside branches.</li>
 <li>Method &#8594; <b>POST</b>.</li>
 <li>URI &#8594; Expression tab &#8594; paste <span class="hcode">concat('https://graph.microsoft.com/v1.0/me/messages/', triggerOutputs()?['body/id'], '/copy')</span> &#8594; OK.</li>
 <li>Body — type <code>{"destinationId": "</code> then Expression tab &#8594; paste <span class="hcode">variables('JobFolderId')</span> &#8594; OK, then type <code>"}</code></li>
