@@ -168,6 +168,8 @@ body.dark .actbar{background:rgba(14,21,38,.94); border-color:#232E4E;}
 body.dark .toggle{background:#1D2A4A; color:var(--ink); border-color:#2A3450;}
 body.dark .toggle.on{background:#243059; border-color:var(--deep);}
 body.dark .emailblk{background:#1D2A4A; border-color:#2A3450;}
+body.dark #jobStrip .jchip{background:#1D2A4A; color:#E7ECF5; border-color:#2A3450;}
+body.dark #jobStrip .jchip.on{background:var(--navy); border-color:var(--red); color:#fff;}
 body.dark .calc, body.dark .volcalcwrap{background:#0F1830; border-color:var(--line);}
 body.dark .help code, body.dark .help .hcode{background:#0F1830; color:#CBD6EC;}
 /* schedule timeline */
@@ -527,7 +529,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.1";
+const APP_VERSION = "V.2.2.2";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -933,10 +935,35 @@ function fmtSentAt(ts){
 function updateLastSentTag(j){
   const el = document.getElementById("lastSentTag");
   if(!el) return;
-  if(!(j && j.lastSent)){ el.textContent = ""; el.classList.remove("overdue"); return; }
-  const overdue = sentOverdue(j);
-  el.textContent = (overdue ? "\u26A0 OVERDUE \u2014 " : "") + "Last Update Sent: " + fmtSentAt(j.lastSent);
-  el.classList.toggle("overdue", overdue);
+  if(!j){ el.textContent = ""; el.classList.remove("overdue"); el.onclick = null; return; }
+  if(j.lastSent){
+    const overdue = sentOverdue(j);
+    el.textContent = (overdue ? "\u26A0 OVERDUE \u2014 " : "") + "Last Update Sent: " + fmtSentAt(j.lastSent);
+    el.classList.toggle("overdue", overdue);
+  } else {
+    el.textContent = "Last Update Sent: \u2014";
+    el.classList.remove("overdue");
+  }
+  el.title = "Tap to edit (for updates sent outside the tool)";
+  el.style.cursor = "pointer";
+  el.onclick = (ev)=>{
+    ev.stopPropagation();
+    const j2 = activeJob(); if(!j2) return;
+    const cur = j2.lastSent ? fmtDateOnly(new Date(j2.lastSent)) + " " +
+      String(new Date(j2.lastSent).getHours()).padStart(2,"0") + String(new Date(j2.lastSent).getMinutes()).padStart(2,"0") : "";
+    const v = prompt("Last Update Sent \u2014 e.g. 7/14/26 2330\nLeave empty to clear the stamp.", cur);
+    if(v == null) return;
+    const trimmed = v.trim();
+    let t = null;
+    if(trimmed){
+      t = parseFreeTime(trimmed);
+      if(t == null){ toast("Couldn't read that \u2014 use the M/D/YY HHMM format"); return; }
+    }
+    j2.lastSent = t;
+    j2.updatedAt = Date.now(); persist();
+    updateLastSentTag(j2);
+    toast(t ? "Last Update Sent set to " + fmtSentAt(t) : "Last Update Sent cleared");
+  };
 }
 function markSent(j){
   j.lastSent = Date.now();
@@ -2644,7 +2671,7 @@ const HELP_USING = `
 <li><b>Change status without opening:</b> tap the colored status chip on the right of the row and pick from the list. The board re-sorts by status number immediately.</li>
 <li><b>New job:</b> the navy button at the top, above the search box. New jobs start at status 1.1 Pending.</li>
 <li><b>Search:</b> type any part of a job#, boat, barge, cargo, or port.</li>
-<li><b>Last update tracking:</b> pressing Open email (or Mail via Shortcut) stamps the job; the Job Information title shows "Last Update Sent" (with a pulsing &#9888; OVERDUE prefix past 16 hours) and each board row shows how long ago — green when fresh, amber past 12 hours, red and pulsing past 16. Overdue jobs also get a pulsing red dot on their timeline card. The clock stops once a job reaches 2.0 Completed or later.</li>
+<li><b>Last update tracking:</b> pressing Open email (or Mail via Shortcut) stamps the job; the Job Information title shows "Last Update Sent" — tap it to edit or set the stamp manually, e.g. when an update went out through regular Outlook instead of the tool (with a pulsing &#9888; OVERDUE prefix past 16 hours) and each board row shows how long ago — green when fresh, amber past 12 hours, red and pulsing past 16. Overdue jobs also get a pulsing red dot on their timeline card. The clock stops once a job reaches 2.0 Completed or later.</li>
 <li><b>Schedule timeline:</b> under the search box — every job with an ETA appears as a status-colored card placed on a horizontal time grid (dates across the top, midnight/noon marks below); the card stretches across to its ETF (a dashed right edge means no ETF yet, shown as a 12-hour block) and jobs stack down the board. The red line is now. Weekends are shaded; the Today button in its header jumps the view back to today. Tap a card to open the job. On the phone the timeline sits behind the Timeline button.</li>
 <li><b>Delete all completed:</b> when any job sits at 8.0 Job Completed, a red button appears under the list — one confirm deletes them all. Export a backup first (menu &#8942;) if you want to keep records.</li>
 </ul>
