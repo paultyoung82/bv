@@ -49,6 +49,7 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .grid2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px;}
 .grid1{display:grid; grid-template-columns:1fr; gap:10px;}
 .grid-times{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px;}
+.lblhint{font-weight:500; text-transform:none; letter-spacing:0; color:var(--hint); font-style:italic;}
 .fld label{display:block; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--label); margin-bottom:4px;}
 .fld input,.fld select,.fld textarea{width:100%; min-width:0; border:1px solid var(--line); border-radius:9px; background:#fff; padding:10px 11px; font-size:15px; font-family:'Inter'; color:var(--ink); font-variant-numeric:tabular-nums;}
 .fld input::placeholder,.fld textarea::placeholder{color:#B7C1D6; font-style:italic; opacity:1;}
@@ -536,7 +537,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.4";
+const APP_VERSION = "V.2.2.5";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -820,7 +821,7 @@ const DOC_TITLES = {
 const JOB_FIELDS = [
   {k:"jobNo",   l:"BV Job#",         ph:"ex: USTEX-26-00805"},
   {k:"vessel",  l:"Vsl / Boat name", ph:"ex: Hafnia Australia", listId:"boatNames"},
-  {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 PBL 3422 or -"},
+  {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 / PBL 3422 or -", hint:"Add a / in between each barge"},
   {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"]},
   {k:"cargo",   l:"Cargo",           ph:"ex: HS VTB"},
   {k:"port",    l:"Port",            ph:"ex: VALERO TXC"},
@@ -1422,7 +1423,8 @@ function fieldHTML(f, val){
     const dl = f.listId ? ' list="' + f.listId + '" autocomplete="off"' : "";
     inner = '<input data-k="' + f.k + '" value="' + esc(val) + '" placeholder="' + esc(f.ph||"") + '"' + im + dl + ">";
   }
-  return '<div class="fld' + span + '"><label>' + esc(f.l) + "</label>" + inner + "</div>";
+  const hint = f.hint ? ' <span class="lblhint">' + esc(f.hint) + "</span>" : "";
+  return '<div class="fld' + span + '"><label>' + esc(f.l) + hint + "</label>" + inner + "</div>";
 }
 function renderEditor(){
   const j = activeJob(); if(!j) return;
