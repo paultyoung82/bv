@@ -135,12 +135,58 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .dsec.closed > *:not(.card-h){display:none;}
 .chev{margin-left:8px; color:var(--deep); transition:transform .15s; font-size:15px; flex:none; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--line); border-radius:8px;}
 .dsec.closed .chev{transform:rotate(-90deg);}
+/* dark mode */
+body.dark{background:#0E1526; color:#E7ECF5;
+  --paper:#0E1526; --ink:#E7ECF5; --line:#2A3450; --hint:#8FA0C0; --label:#9DB0D2; --deep:#DCE6FA;}
+body.dark .card{background:#16203A; border-color:var(--line);}
+body.dark .card-h{background:#1D2A4A;}
+body.dark .fld input, body.dark .fld select, body.dark .fld textarea{background:#0F1830; color:var(--ink); border-color:var(--line);}
+body.dark .searchbox input{background:#16203A; color:var(--ink); border-color:var(--line);}
+body.dark .btn{background:#1D2A4A; color:#E7ECF5; border-color:#2A3450;}
+body.dark .btn-navy{background:var(--navy); border-color:var(--navy); color:#fff;}
+body.dark .btn-red{background:var(--red); border-color:var(--red); color:#fff;}
+body.dark .btn-gold{background:#FFC000; border-color:#DFA800; color:#3A2E00;}
+body.dark .chev{background:#16203A; border-color:var(--line);}
+body.dark .menu-pop{background:#16203A; border-color:var(--line);}
+body.dark .menu-pop button{color:var(--ink); border-color:#232E4E;}
+body.dark .menu-pop button:active{background:#1D2A4A;}
+body.dark .calc-panel{background:#16203A; border-color:var(--line);}
+body.dark .calc-grid button{background:#1D2A4A; color:#E7ECF5; border-color:#2A3450;}
+body.dark #calcIn{background:#0F1830; color:var(--ink); border-color:var(--line);}
+body.dark .notecard{background:#1D2A4A; border-color:#2A3450;}
+body.dark .notecard.pinned{background:#243059; border-color:var(--deep);}
+body.dark .notecard textarea{color:var(--ink);}
+body.dark .jobrow{background:#16203A !important;}
+body.dark .jobrow .jr-vessel{color:var(--deep);}
+body.dark #tlBody{background:#0F1830 !important;}
+body.dark .tlhead{background:#16203A;}
+body.dark .tlwknd{background:rgba(255,255,255,.05);}
+body.dark .boatrow input, body.dark .clirow input{background:#0F1830; color:var(--ink); border-color:var(--line);}
+body.dark .clirow{background:#1D2A4A; border-color:#2A3450;}
+body.dark .actbar-in{background:transparent;}
+body.dark .actbar{background:rgba(14,21,38,.94); border-color:#232E4E;}
+body.dark .toggle{background:#1D2A4A; color:var(--ink); border-color:#2A3450;}
+body.dark .toggle.on{background:#243059; border-color:var(--deep);}
+body.dark .emailblk{background:#1D2A4A; border-color:#2A3450;}
+body.dark .calc, body.dark .volcalcwrap{background:#0F1830; border-color:var(--line);}
+body.dark .help code, body.dark .help .hcode{background:#0F1830; color:#CBD6EC;}
 /* schedule timeline */
+@keyframes bvpulse{0%,100%{opacity:1;} 50%{opacity:.3;}}
+.overdue{animation:bvpulse 1.2s infinite; color:var(--red) !important; font-weight:700;}
+.tlod{position:absolute; top:5px; right:5px; width:9px; height:9px; border-radius:50%; background:var(--red); border:1.5px solid #fff; animation:bvpulse 1.2s infinite;}
+body.dark ::-webkit-scrollbar{width:11px; height:11px;}
+body.dark ::-webkit-scrollbar-track{background:#0F1830;}
+body.dark ::-webkit-scrollbar-thumb{background:#2A3450; border-radius:6px; border:2px solid #0F1830;}
+body.dark ::-webkit-scrollbar-thumb:hover{background:#3A4763;}
+body.dark{scrollbar-color:#2A3450 #0F1830;}
+.jr-side{display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex:none;}
+.jr-sent{font-size:10.5px; font-weight:600; white-space:nowrap;}
 #tlToggle{display:none;}
 .tlcard{position:absolute; border-radius:9px; padding:5px 8px; font-size:11.5px; line-height:1.5; cursor:pointer; overflow:hidden; border:1px solid rgba(16,30,66,.28); box-shadow:0 1px 3px rgba(16,30,66,.16); z-index:2;}
 .tlcard b{font-size:11.5px; display:block; white-space:nowrap;}
 .tlcard span{display:block; white-space:nowrap; opacity:.85; font-size:10.5px;}
 .tlcard.noetf{border-right:3px dashed rgba(16,30,66,.5);}
+.tlwknd{position:absolute; top:0; bottom:0; background:rgba(16,30,66,.05); z-index:0;}
 .tlvday{position:absolute; top:0; bottom:0; border-left:1px solid var(--line); z-index:1;}
 .tlvnoon{position:absolute; top:0; bottom:0; border-left:1px dotted #E7EBF4; z-index:1;}
 .tlhead{position:sticky; top:0; background:#fff; z-index:4; border-bottom:1px solid var(--line);}
@@ -173,6 +219,12 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .help code{font-family:Consolas,monospace; font-size:12px; background:#F2F4F9; padding:2px 5px; border-radius:5px; word-break:break-all;}
 .help .hcode{display:block; background:#F2F4F9; border-left:3px solid var(--navy); padding:8px 11px; border-radius:6px; font-family:Consolas,monospace; font-size:12px; margin:6px 0 12px; word-break:break-all;}
 .help .hnote{background:#FCEBED; border-left:3px solid var(--red); padding:8px 11px; border-radius:6px; font-size:13px; margin:6px 0 12px;}
+/* saved clients editor */
+.clirow{border:1px solid var(--line); border-radius:10px; padding:9px 10px; margin-bottom:9px; background:#FBFCFE;}
+.clirow .cr-h{display:flex; gap:8px; align-items:center; margin-bottom:7px;}
+.clirow input{min-width:0; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; font-family:'Inter'; width:100%;}
+.clirow .cr-h input{flex:1;}
+.clirow .cr-l{font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--label); margin:6px 0 3px;}
 /* saved boats editor */
 .boatrow{display:flex; gap:8px; margin-bottom:8px; align-items:flex-start;}
 .boatrow input{min-width:0; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:13.5px; font-family:'Inter';}
@@ -232,7 +284,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .calc-grid button.op{background:#EEF2FA; color:var(--deep); font-weight:600;}
 .calc-grid button.eq{background:var(--navy); border-color:var(--navy); color:#fff; font-weight:600;}
 .calc-grid button.cl{color:var(--red);}
-.menu-pop{position:absolute; right:14px; top:54px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(16,30,66,.16); z-index:60; overflow:hidden; display:none; min-width:210px;}
+.menu-pop{position:fixed; right:14px; top:64px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(16,30,66,.16); z-index:60; overflow:hidden; display:none; min-width:210px;}
 .menu-pop button{display:block; width:100%; text-align:left; background:none; border:none; padding:12px 16px; font-size:14px; color:var(--ink); border-bottom:1px solid #F0F3F9;}
 .menu-pop button:last-child{border-bottom:none;}
 .menu-pop button:active{background:#F3F6FC;}
@@ -257,10 +309,22 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
   <button id="miNew">&#43;&nbsp; New job</button>
   <button id="miSync">&#9729;&nbsp; Sync settings</button>
   <button id="miHelp">&#10067;&nbsp; Help</button>
+  <button id="miDark">&#127769;&nbsp; Dark mode</button>
   <div id="storageMeter" style="padding:10px 16px 12px; font-size:12px; color:var(--label); border-top:1px solid #F0F3F9; cursor:default;"></div>
 </div>
 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
 <datalist id="boatNames"></datalist>
+<div id="clientOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
+  <div class="card" style="max-width:620px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
+    <div class="card-h"><h2>Saved clients</h2><span class="tag" id="clientCount"></span></div>
+    <div class="card-b">
+      <div class="searchbox" style="margin-bottom:10px"><input id="clientSearch" placeholder="Search clients&hellip;"></div>
+      <div id="clientEditList"></div>
+      <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="clientClose" style="margin-left:auto">Close</button></div>
+      <p class="hintline">Edits save when you leave a field. Use fills the To / CC of the email block you opened this from.</p>
+    </div>
+  </div>
+</div>
 <div id="boatOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
   <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
     <div class="card-h"><h2>Saved boats</h2><span class="tag" id="boatCount"></span></div>
@@ -282,7 +346,9 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <div class="searchbox"><input id="jobSearch" placeholder="Search job#, vessel, barge&hellip;"></div>
     <button class="btn btn-sm" id="tlToggle" style="margin-top:12px;">Hide timeline &#9652;</button>
     <div class="card" id="timelineWrap">
-      <div class="card-h"><h2>Schedule timeline</h2><span class="tag" id="tlRange"></span></div>
+      <div class="card-h"><h2>Schedule timeline</h2>
+        <button class="btn btn-sm" id="tlToday" type="button" style="margin-left:auto; padding:5px 11px;">Today</button>
+        <span class="tag" id="tlRange" style="margin-left:8px;"></span></div>
       <div id="tlBody" style="position:relative; overflow:auto; background:#fff;"></div>
     </div>
     <div id="jobList"></div>
@@ -294,7 +360,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
     <div id="jobStrip"></div>
     <div class="card" style="margin-top:6px">
       <div class="dsec" id="dsecJob">
-      <div class="card-h"><h2>Job information</h2><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></div>
+      <div class="card-h"><h2>Job information</h2><span class="tag" id="lastSentTag" style="color:var(--deep)"></span><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secJob"></div>
       <div id="boatCtl" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div></div>
       </div>
@@ -461,7 +527,7 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.1.1";
+const APP_VERSION = "V.2.2.1";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -513,6 +579,12 @@ async function loadState(){
     if(braw == null) braw = localStorage.getItem("bv_boats_v1");
     if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; sortBoats(); }
   } catch(e){ boats = []; }
+  try{
+    let craw = null;
+    if(useIDB) craw = await idbGet("clients");
+    if(craw == null) craw = localStorage.getItem("bv_clients_v1");
+    if(craw){ const cd = JSON.parse(craw); clients = cd.list || []; clientsUpdatedAt = cd.updatedAt || 0; sortClients(); }
+  } catch(e){ clients = []; }
   try{
     let nraw = null;
     if(useIDB) nraw = await idbGet("notes");
@@ -632,6 +704,26 @@ function renderNotes(){
     notes = notes.filter(x => x.id !== n.id);
     persistNotes(); renderNotes();
   });
+}
+let clients = [];
+let clientsUpdatedAt = 0;
+function sortClients(){
+  clients.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), undefined, {sensitivity:"base"}));
+}
+function persistClientsLocal(){
+  const data = JSON.stringify({list: clients, updatedAt: clientsUpdatedAt});
+  if(useIDB){ idbSet("clients", data).catch(()=>{}); }
+  else { try{ localStorage.setItem("bv_clients_v1", data); }catch(e){} }
+}
+function persistClients(){
+  sortClients();
+  clientsUpdatedAt = Date.now();
+  persistClientsLocal();
+  if(fb.on && fb.db){
+    fb.db.collection("users").doc(fb.uid).collection("meta").doc("clients")
+      .set({list: JSON.parse(JSON.stringify(clients)), updatedAt: clientsUpdatedAt})
+      .catch(()=>{});
+  }
 }
 function persist(){
   const data = JSON.stringify(state.jobs);
@@ -833,6 +925,45 @@ function fmtDT(d){
   return mm + "/" + dd + "/" + yy + " " + h + mi;
 }
 function parseDTL(v){ if(!v) return null; const d = new Date(v); return isNaN(d) ? null : d; }
+function fmtSentAt(ts){
+  const d = new Date(ts);
+  const p2 = (n)=> String(n).padStart(2, "0");
+  return (d.getMonth()+1) + "/" + d.getDate() + "/" + String(d.getFullYear()).slice(2) + " at " + p2(d.getHours()) + p2(d.getMinutes());
+}
+function updateLastSentTag(j){
+  const el = document.getElementById("lastSentTag");
+  if(!el) return;
+  if(!(j && j.lastSent)){ el.textContent = ""; el.classList.remove("overdue"); return; }
+  const overdue = sentOverdue(j);
+  el.textContent = (overdue ? "\u26A0 OVERDUE \u2014 " : "") + "Last Update Sent: " + fmtSentAt(j.lastSent);
+  el.classList.toggle("overdue", overdue);
+}
+function markSent(j){
+  j.lastSent = Date.now();
+  j.updatedAt = Date.now();
+  persist();
+  updateLastSentTag(j);
+}
+function sentActive(j){
+  const st = parseFloat(j.status);
+  return isNaN(st) || st < 2;   /* the clock stops at 2.0 Completed and beyond */
+}
+function sentOverdue(j){
+  return !!(j.lastSent && sentActive(j) && (Date.now() - j.lastSent) / 3600000 >= 16);
+}
+function sentAgo(j){
+  if(!j.lastSent || !sentActive(j)) return "";
+  const mins = (Date.now() - j.lastSent) / 60000;
+  let label;
+  if(mins < 60) label = Math.max(1, Math.round(mins)) + "m ago";
+  else if(mins < 1440) label = Math.round(mins/60) + "h ago";
+  else label = Math.round(mins/1440) + "d ago";
+  const hrs = mins / 60;
+  let color = "#22B356", cls = "";
+  if(hrs >= 16){ color = "var(--red)"; cls = " overdue"; }
+  else if(hrs >= 12){ color = "#B47B00"; }
+  return '<div class="jr-sent' + cls + '" style="color:' + color + '">Sent ' + label + "</div>";
+}
 function nowStamp(){ return fmtDT(new Date()); }
 function toast(msg){
   const t = document.getElementById("toast");
@@ -1079,6 +1210,10 @@ function renderTimeline(){
   let head = "", grid = "";
   for(let t = start; t <= end; t += dayMs){
     const x = X(t);
+    const dw = new Date(t).getDay();
+    if(t < end && (dw === 0 || dw === 6)){
+      grid += '<div class="tlwknd" style="left:' + x + 'px; width:' + (24 * PXH) + 'px;"></div>';
+    }
     grid += '<div class="tlvday" style="left:' + x + 'px;"></div>';
     head += '<div class="tht" style="left:' + (x + 3) + 'px;">0000</div>';
     if(t < end){
@@ -1102,6 +1237,7 @@ function renderTimeline(){
     const c = STATUS_COLORS[code] || {bg:"#ECEFF4", fg:"#3A4358"};
     const left = X(x.s);
     const top = headerH + idx * (rowH + gap) + 6;
+    const od = sentOverdue(j);
     const bgs = (j.barges && j.barges.trim() && j.barges.trim() !== "-") ? " (" + j.barges.trim() + ")" : "";
     const l1 = (j.vessel || "Untitled") + bgs + (j.port && String(j.port).trim() ? " - " + j.port.trim() : "");
     const l2 = (j.jobNo ? j.jobNo + " - " : "") + (j.jEta || "");
@@ -1111,7 +1247,7 @@ function renderTimeline(){
     const tw2 = mctx.measureText(l2).width;
     const w = Math.max((x.e - x.s) / H * PXH, Math.ceil(Math.max(tw1, tw2)) + 20);
     cards += '<div class="tlcard' + (x.real ? "" : " noetf") + '" data-tl="' + j.id + '" style="left:' + left + 'px; top:' + top + 'px; width:' + w + 'px; height:' + rowH + 'px; background:' + c.bg + '; color:' + c.fg + ';" title="' + esc(l1) + '">' +
-      "<b>" + esc(l1) + "</b><span>" + esc(l2) + "</span></div>";
+      "<b>" + esc(l1) + "</b><span>" + esc(l2) + "</span>" + (od ? '<i class="tlod" title="Update overdue"></i>' : "") + "</div>";
   });
   body.style.maxHeight = (headerH + Math.min(items.length, 5) * (rowH + gap) + 18) + "px";
   const prevL = body.scrollLeft, prevT = body.scrollTop;
@@ -1121,6 +1257,13 @@ function renderTimeline(){
   const r0 = new Date(start), r1 = new Date(end - dayMs);
   rangeEl.textContent = (r0.getMonth()+1) + "/" + r0.getDate() + " \u2013 " + (r1.getMonth()+1) + "/" + r1.getDate();
   body.querySelectorAll("[data-tl]").forEach(el => el.onclick = ()=> openJob(el.dataset.tl));
+  state._tlToday = ()=>{
+    const td = new Date(); td.setHours(0,0,0,0);
+    let tt = td.getTime();
+    if(tt > end - dayMs) tt = end - dayMs;
+    if(tt < start) tt = start;
+    body.scrollLeft = Math.max(0, X(tt) - padL);
+  };
   if(prevL > 0 || prevT > 0){
     /* re-render mid-session (status change etc.): stay where the user scrolled */
     body.scrollLeft = prevL; body.scrollTop = prevT;
@@ -1137,6 +1280,10 @@ function renderTimeline(){
     body.scrollLeft = Math.max(0, X(target) - padL);
   }
 }
+document.getElementById("tlToday").onclick = (e)=>{
+  e.stopPropagation();
+  if(state._tlToday) state._tlToday();
+};
 document.getElementById("tlToggle").onclick = ()=>{
   const w = document.getElementById("timelineWrap");
   const hidden = w.classList.toggle("tlhide");
@@ -1171,7 +1318,8 @@ function renderJobs(){
     return '<div class="jobrow" data-id="' + j.id + '" role="button" tabindex="0"' + rowStyle(j.status) + '>' +
       '<div class="jr-main"><div class="jr-vessel">' + esc(j.vessel || j.jobNo || "Untitled job") +
         ((j.barges && j.barges.trim() && j.barges.trim() !== "-") ? ' <span style="font-weight:500;color:#5A6A8C">&middot; ' + esc(j.barges.trim()) + "</span>" : "") + '</div>' +
-      '<div class="jr-sub">' + sub + "</div>" + cmt + "</div>" + sel +
+      '<div class="jr-sub">' + sub + "</div>" + cmt + "</div>" +
+      '<div class="jr-side">' + sel + sentAgo(j) + "</div>" +
     "</div>";
   }).join("");
   list.querySelectorAll(".jobrow").forEach(row => {
@@ -1250,6 +1398,7 @@ function renderEditor(){
   document.getElementById("secEtf2").innerHTML = ETF2_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   document.getElementById("secRate").innerHTML = RATE_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   j.asOf = nowStamp(); persist();
+  updateLastSentTag(j);
   document.getElementById("secComments").innerHTML =
     '<div class="fld"><label>Update info as of</label><div class="row">' +
       '<input data-k="asOf" value="' + esc(j.asOf) + '" placeholder="6/5/26 1918">' +
@@ -1295,6 +1444,55 @@ function renderBoatCtl(){
   };
   document.getElementById("btnManageBoats").onclick = ()=>{ renderBoatOverlay(); document.getElementById("boatOverlay").style.display = "block"; };
 }
+function renderClientOverlay(){
+  document.getElementById("clientCount").textContent = clients.length + " saved";
+  const box = document.getElementById("clientEditList");
+  box.innerHTML = clients.length ? clients.map((c,i) =>
+    '<div class="clirow" data-cn="' + esc(String(c.name||"").toLowerCase()) + '">' +
+      '<div class="cr-h">' +
+        '<input data-ci2="' + i + '" data-ck2="name" value="' + esc(c.name) + '" placeholder="Client name">' +
+        '<button class="btn btn-sm btn-navy" type="button" data-cuse="' + i + '" style="flex:0 0 auto; padding:8px 12px;">Use</button>' +
+        '<button class="sbtn del" type="button" data-cdel2="' + i + '" title="Delete">&#215;</button>' +
+      "</div>" +
+      '<div class="cr-l">To</div><input data-ci2="' + i + '" data-ck2="to" value="' + esc(c.to || "") + '" placeholder="addresses&hellip;">' +
+      '<div class="cr-l">CC</div><input data-ci2="' + i + '" data-ck2="cc" value="' + esc(c.cc || "") + '" placeholder="addresses&hellip;">' +
+    "</div>"
+  ).join("") : '<div class="empty">No saved clients yet. Fill To / CC in a job&rsquo;s email block, then press Save Client.</div>';
+  box.querySelectorAll("[data-cuse]").forEach(btn => btn.onclick = ()=>{
+    const j = activeJob();
+    if(!j){ toast("Open a job first"); return; }
+    const c = clients[+btn.dataset.cuse]; if(!c) return;
+    const ti = (state._cliTarget != null && j.emails[state._cliTarget]) ? state._cliTarget : 0;
+    j.emails[ti].to = c.to || "";
+    j.emails[ti].cc = c.cc || "";
+    j.updatedAt = Date.now(); persist();
+    renderEmails();
+    document.getElementById("clientOverlay").style.display = "none";
+    toast("Client set on Email " + (ti + 1) + ": " + (c.name || ""));
+  });
+  box.querySelectorAll("[data-cdel2]").forEach(btn => btn.onclick = ()=>{
+    const i = +btn.dataset.cdel2;
+    if(!confirm("Delete saved client " + (clients[i] && clients[i].name ? clients[i].name : "") + "?")) return;
+    clients.splice(i,1); persistClients(); renderClientOverlay(); renderEmails();
+  });
+  applyClientFilter();
+}
+function applyClientFilter(){
+  const q = String((document.getElementById("clientSearch") || {}).value || "").trim().toLowerCase();
+  document.querySelectorAll("#clientEditList .clirow").forEach(r => {
+    r.style.display = (!q || (r.dataset.cn || "").indexOf(q) > -1) ? "" : "none";
+  });
+}
+document.getElementById("clientSearch").addEventListener("input", applyClientFilter);
+document.getElementById("clientEditList").addEventListener("change", (e)=>{
+  const ds = e.target.dataset || {};
+  if(ds.ci2 == null || !ds.ck2) return;
+  const c = clients[+ds.ci2]; if(!c) return;
+  c[ds.ck2] = e.target.value;
+  persistClients();
+  if(ds.ck2 === "name") renderClientOverlay();
+});
+document.getElementById("clientClose").onclick = ()=>{ document.getElementById("clientOverlay").style.display = "none"; };
 function renderBoatOverlay(){
   document.getElementById("boatCount").textContent = boats.length + " saved";
   const box = document.getElementById("boatEditList");
@@ -1402,6 +1600,10 @@ function renderEmails(){
       '<input data-ei="' + i + '" data-ek="ref" value="' + esc(em.ref || "") + '" placeholder="ex: 7201957 — becomes REF# 7201957"></div>' +
       '<div class="fld"><label>To</label><textarea class="grow" rows="1" data-ei="' + i + '" data-ek="to" placeholder="ex: ops@client.com; scheduler@client.com">' + esc(em.to) + "</textarea></div>" +
       '<div class="fld"><label>CC</label><textarea class="grow" rows="1" data-ei="' + i + '" data-ek="cc" placeholder="ex: dispatch@bureauveritas.com">' + esc(em.cc) + "</textarea></div>" +
+      '<div class="row" style="margin-bottom:10px;">' +
+        '<button class="btn btn-sm" type="button" data-csave="' + i + '" style="flex:0 0 auto;">Save Client</button>' +
+        '<button class="btn btn-sm btn-navy" type="button" data-cpick="' + i + '" style="flex:0 0 auto;">Clients (' + clients.length + ")</button>" +
+      "</div>" +
       '<div class="fld"><label>Subject</label>' +
         '<textarea class="grow" rows="1" data-ei="' + i + '" data-ek="subject" placeholder="Press Generate Subject Line below">' + esc(em.subject) + "</textarea>" +
         '<button class="btn btn-sm btn-navy" type="button" data-egen="' + i + '" style="margin-top:7px">&#8635;&nbsp; Generate Subject Line</button>' +
@@ -1410,6 +1612,25 @@ function renderEmails(){
       '<input data-ei="' + i + '" data-ek="relay" value="' + esc(em.relay || "") + '" placeholder="*BV* — added in front of the subject"></div>' +
     "</div>"
   ).join("");
+  box.querySelectorAll("[data-csave]").forEach(b => b.onclick = ()=>{
+    const em = j.emails[+b.dataset.csave];
+    const to = String(em.to||"").trim(), cc = String(em.cc||"").trim();
+    if(!to && !cc){ toast("Fill To / CC first, then save the client"); return; }
+    const nm = prompt("Client name for this To/CC set:", "");
+    if(nm == null) return;
+    const name = nm.trim();
+    if(!name){ toast("Client not saved \u2014 a name is required"); return; }
+    const ex = clients.find(c => String(c.name||"").trim().toLowerCase() === name.toLowerCase());
+    if(ex){ ex.to = to; ex.cc = cc; toast("Client updated: " + name); }
+    else { clients.push({id: uid(), name: name, to: to, cc: cc}); toast("Client saved: " + name); }
+    persistClients();
+    renderEmails();
+  });
+  box.querySelectorAll("[data-cpick]").forEach(b => b.onclick = ()=>{
+    state._cliTarget = +b.dataset.cpick;
+    renderClientOverlay();
+    document.getElementById("clientOverlay").style.display = "block";
+  });
   box.querySelectorAll("[data-egen]").forEach(b => b.onclick = ()=>{
     const jj = activeJob(); const i = +b.dataset.egen;
     jj.emails[i].subject = buildSubject(jj, jj.emails[i].ref); jj.updatedAt = Date.now(); persist();
@@ -2048,6 +2269,7 @@ async function sendViaShortcut(){
     }
   } catch(e){ toast("Couldn't copy image — the Shortcut needs it on the clipboard"); return; }
   const pl = emailPayload(j);
+  markSent(j);
   window.location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent("BV Send Update") +
     "&input=text&text=" + encodeURIComponent(JSON.stringify(pl));
 }
@@ -2069,6 +2291,7 @@ async function openEmail(){
   } else if(!state.lastImageBlob){
     toast("Tip: press Create image first \u2014 then Open email auto-copies it for pasting");
   }
+  markSent(j);
   window.location.href = href;
 }
 
@@ -2288,6 +2511,17 @@ function startSync(){
       if(state.view === "edit") renderBoatCtl();
     }
   }, ()=>{});
+  const cliRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("clients");
+  if(fb.unsubClients) fb.unsubClients();
+  fb.unsubClients = cliRef.onSnapshot(d => {
+    const dat = d.data();
+    if(dat && (dat.updatedAt || 0) > clientsUpdatedAt){
+      clients = dat.list || [];
+      clientsUpdatedAt = dat.updatedAt;
+      sortClients();
+      persistClientsLocal();
+    }
+  }, ()=>{});
   const notesRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("notes");
   if(fb.unsubNotes) fb.unsubNotes();
   fb.unsubNotes = notesRef.onSnapshot(d => {
@@ -2343,7 +2577,8 @@ document.getElementById("syncOff").onclick = ()=>{
   if(fb.unsub) fb.unsub();
   if(fb.unsubBoats) fb.unsubBoats();
   if(fb.unsubNotes) fb.unsubNotes();
-  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null;
+  if(fb.unsubClients) fb.unsubClients();
+  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
   setSyncDot("off");
@@ -2391,6 +2626,7 @@ document.getElementById("btnMenu").onclick = (e)=>{
   if(opening){
     const r = document.getElementById("btnMenu").getBoundingClientRect();
     menuPop.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
+    menuPop.style.top = Math.round(r.bottom + 8) + "px";
   }
   menuPop.style.display = opening ? "block" : "none";
   if(opening) updateStorageMeter();
@@ -2408,7 +2644,8 @@ const HELP_USING = `
 <li><b>Change status without opening:</b> tap the colored status chip on the right of the row and pick from the list. The board re-sorts by status number immediately.</li>
 <li><b>New job:</b> the navy button at the top, above the search box. New jobs start at status 1.1 Pending.</li>
 <li><b>Search:</b> type any part of a job#, boat, barge, cargo, or port.</li>
-<li><b>Schedule timeline:</b> under the search box — every job with an ETA appears as a status-colored card placed on a horizontal time grid (dates across the top, midnight/noon marks below); the card stretches across to its ETF (a dashed right edge means no ETF yet, shown as a 12-hour block) and jobs stack down the board. The red line is now. Tap a card to open the job. On the phone the timeline sits behind the Timeline button.</li>
+<li><b>Last update tracking:</b> pressing Open email (or Mail via Shortcut) stamps the job; the Job Information title shows "Last Update Sent" (with a pulsing &#9888; OVERDUE prefix past 16 hours) and each board row shows how long ago — green when fresh, amber past 12 hours, red and pulsing past 16. Overdue jobs also get a pulsing red dot on their timeline card. The clock stops once a job reaches 2.0 Completed or later.</li>
+<li><b>Schedule timeline:</b> under the search box — every job with an ETA appears as a status-colored card placed on a horizontal time grid (dates across the top, midnight/noon marks below); the card stretches across to its ETF (a dashed right edge means no ETF yet, shown as a 12-hour block) and jobs stack down the board. The red line is now. Weekends are shaded; the Today button in its header jumps the view back to today. Tap a card to open the job. On the phone the timeline sits behind the Timeline button.</li>
 <li><b>Delete all completed:</b> when any job sits at 8.0 Job Completed, a red button appears under the list — one confirm deletes them all. Export a backup first (menu &#8942;) if you want to keep records.</li>
 </ul>
 <h3>2. Job Information section</h3>
@@ -2426,6 +2663,7 @@ const HELP_USING = `
 <li><b>To / CC:</b> paste straight from Outlook, names and all — <code>Darla Curtis &lt;ddp@Vitol.com&gt;; ...</code> is fine. The app extracts the bare addresses when it builds the email. Put your own work address in CC on every block: it feeds your sent updates back to your Inbox for the Power Automate filer.</li>
 <li><b>Subject:</b> press Generate Subject Line. Format: REF# - UPDATE - BARGES (BOAT) - OPERATION - CARGO - PORT - JOB#. Barges only appear when the barge field has content other than a dash. Edit freely after generating.</li>
 <li><b>Relay tag:</b> defaults to <code>*BV*</code> and is prepended to the subject when the email opens. It is the Power Automate trigger keyword. Clear it on a block if you never want the tag on that email.</li>
+<li><b>Saved clients:</b> with To / CC filled, press <b>Save Client</b> and name the set (e.g. "Vitol - Products Calcasieu"). On any job, press <b>Clients</b> to search the library and one-tap <b>Use</b> the addresses into that email block. Edit or delete saved clients in the same overlay; the library syncs across devices.</li>
 <li><b>Add email / &#215;:</b> add more blocks (each with its own reference, addresses, and subject) or remove one.</li>
 </ul>
 <h3>4. Movement Times</h3>
@@ -2473,6 +2711,7 @@ const HELP_USING = `
 <ul>
 <li>Everything autosaves on the device as you type ("Saved" flashes in the Job Information title). The header shows your data size next to the &#8942; menu; the menu shows it against the real quota.</li>
 <li><b>Live sync (Firebase):</b> tap the colored dot in the header (grey = off, green = live, red = error). Paste your Firebase config once per device, sign in with your sync email/password, and every device shares one live Job Board — including the saved-boat library. Newest edit wins per job.</li>
+<li><b>Dark mode:</b> menu &#8942; &#8594; Dark mode. The preview/update image stays light regardless — clients always receive the standard white format.</li>
 <li><b>Export / Import (menu &#8942;):</b> downloads/reads <code>bv_jobs_backup.json</code>. Import merges by job — newer version wins, nothing is wiped. Keep a backup in OneDrive; it is your safety net against cleared browser data.</li>
 </ul>
 <h3>11. Mail via Shortcut (one-time iPhone setup)</h3>
@@ -2962,6 +3201,16 @@ function renderHelp(tab){
 document.getElementById("helpTab1").onclick = ()=> renderHelp(1);
 document.getElementById("helpTab2").onclick = ()=> renderHelp(2);
 document.getElementById("miHelp").onclick = ()=>{ hideMenu(); renderHelp(1); show("help"); };
+function applyTheme(dark){
+  document.body.classList.toggle("dark", !!dark);
+  const mi = document.getElementById("miDark");
+  if(mi) mi.innerHTML = dark ? "&#9728;&#65039;&nbsp; Light mode" : "&#127769;&nbsp; Dark mode";
+  try{ localStorage.setItem("bv_theme", dark ? "dark" : "light"); }catch(e){}
+}
+document.getElementById("miDark").onclick = ()=>{
+  hideMenu();
+  applyTheme(!document.body.classList.contains("dark"));
+};
 
 /* ================= boot ================= */
 document.querySelectorAll(".dsec > .card-h").forEach(h => {
@@ -2970,6 +3219,7 @@ document.querySelectorAll(".dsec > .card-h").forEach(h => {
     h.parentElement.classList.toggle("closed");
   });
 });
+try{ if(localStorage.getItem("bv_theme") === "dark") applyTheme(true); }catch(e){}
 document.getElementById("verTag").textContent = APP_VERSION;
 loadState().then(()=>{
   renderJobs();
