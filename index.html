@@ -538,7 +538,10 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.6";
+const APP_VERSION = "V.2.2.9";
+/* Update image render scale. Layout is 720px wide, so final PNG width = 720 * IMG_SCALE.
+   1 => 720px (current, smallest readable). 1.25 => 900px. 1.5 => 1080px. 2 => 1440px (original, very large). */
+const IMG_SCALE = 1;
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -2252,7 +2255,7 @@ async function generateImage(){
   holder.appendChild(clone);
   document.body.appendChild(holder);
   try{
-    const canvas = await html2canvas(holder, {scale:2, backgroundColor:"#ffffff", useCORS:true, logging:false});
+    const canvas = await html2canvas(holder, {scale:IMG_SCALE, backgroundColor:"#ffffff", useCORS:true, logging:false});
     const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
     state.lastImageBlob = blob;
     const url = URL.createObjectURL(blob);
