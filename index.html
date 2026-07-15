@@ -45,6 +45,7 @@ button{font-family:'Inter',sans-serif; cursor:pointer;}
 .card-h{display:flex; align-items:center; gap:8px; padding:13px 16px; border-bottom:1px solid var(--line); background:#DCE3F0;}
 .card-h h2{font-family:'Archivo',sans-serif; font-size:13.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--deep);}
 .card-h .tag{margin-left:auto; font-size:11px; color:var(--hint); text-align:right;}
+#clientCloseTop, #boatCloseTop{margin-left:4px; flex:0 0 auto;}
 .card-b{padding:14px 16px 16px;}
 .grid2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px 12px;}
 .grid1{display:grid; grid-template-columns:1fr; gap:10px;}
@@ -324,7 +325,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 <datalist id="boatNames"></datalist>
 <div id="clientOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
   <div class="card" style="max-width:620px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
-    <div class="card-h"><h2>Saved clients</h2><span class="tag" id="clientCount"></span></div>
+    <div class="card-h" style="position:sticky; top:0; z-index:2; border-radius:13px 13px 0 0;"><h2>Saved clients</h2><span class="tag" id="clientCount"></span><button class="btn btn-sm" id="clientCloseTop">Close</button></div>
     <div class="card-b">
       <div class="searchbox" style="margin-bottom:10px"><input id="clientSearch" placeholder="Search clients&hellip;"></div>
       <div id="clientEditList"></div>
@@ -335,7 +336,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 </div>
 <div id="boatOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
   <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
-    <div class="card-h"><h2>Saved boats</h2><span class="tag" id="boatCount"></span></div>
+    <div class="card-h" style="position:sticky; top:0; z-index:2; border-radius:13px 13px 0 0;"><h2>Saved boats</h2><span class="tag" id="boatCount"></span><button class="btn btn-sm" id="boatCloseTop">Close</button></div>
     <div class="card-b">
       <div class="searchbox" style="margin-bottom:10px"><input id="boatSearch" placeholder="Search boats&hellip;"></div>
       <div id="boatEditList"></div>
@@ -537,7 +538,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.5";
+const APP_VERSION = "V.2.2.6";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -1534,7 +1535,7 @@ document.getElementById("clientEditList").addEventListener("change", (e)=>{
   persistClients();
   if(ds.ck2 === "name") renderClientOverlay();
 });
-document.getElementById("clientClose").onclick = ()=>{ document.getElementById("clientOverlay").style.display = "none"; };
+document.getElementById("clientClose").onclick = document.getElementById("clientCloseTop").onclick = ()=>{ document.getElementById("clientOverlay").style.display = "none"; };
 function renderBoatOverlay(){
   document.getElementById("boatCount").textContent = boats.length + " saved";
   const box = document.getElementById("boatEditList");
@@ -1590,7 +1591,7 @@ function applyBoatFilter(){
   });
 }
 document.getElementById("boatSearch").addEventListener("input", applyBoatFilter);
-document.getElementById("boatClose").onclick = ()=>{ document.getElementById("boatOverlay").style.display = "none"; renderBoatCtl(); };
+document.getElementById("boatClose").onclick = document.getElementById("boatCloseTop").onclick = ()=>{ document.getElementById("boatOverlay").style.display = "none"; renderBoatCtl(); };
 function renderTimes(j){
   const list = activeTimes(j);
   const half = Math.ceil(list.length / 2);
