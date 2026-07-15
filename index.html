@@ -173,6 +173,9 @@ body.dark #jobStrip .jchip.on{background:var(--navy); border-color:var(--red); c
 body.dark .calc, body.dark .volcalcwrap{background:#0F1830; border-color:var(--line);}
 body.dark .help code, body.dark .help .hcode{background:#0F1830; color:#CBD6EC;}
 /* schedule timeline */
+body.viewer #btnNewJob, body.viewer #purgeWrap, body.viewer #miNew, body.viewer #notesFab, body.viewer #notesPanel, body.viewer #abNotes{display:none !important;}
+body.viewer .chipsel{pointer-events:none;}
+body.viewer .jobrow{cursor:default;}
 @keyframes bvpulse{0%,100%{opacity:1;} 50%{opacity:.3;}}
 .overdue{animation:bvpulse 1.2s infinite; color:var(--red) !important; font-weight:700;}
 .tlod{position:absolute; top:5px; right:5px; width:9px; height:9px; border-radius:50%; background:var(--red); border:1.5px solid #fff; animation:bvpulse 1.2s infinite;}
@@ -275,6 +278,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 @media(min-width:1280px){
   #notesFab{display:none !important;}
   #notesPanel{display:block !important;}
+  #abNotes, #pvNotes{display:none;}
 }
 .calc-panel{position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 74px); z-index:47; width:238px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 30px rgba(16,30,66,.25); padding:10px; display:none;}
 .calc-panel input{width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 10px; font-size:17px; text-align:right; font-family:'Inter'; font-variant-numeric:tabular-nums; color:var(--ink);}
@@ -516,6 +520,8 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
         <div class="fld"><label>Email</label><input id="syncEmail" type="email" autocomplete="username"></div>
         <div class="fld"><label>Password</label><input id="syncPw" type="password" autocomplete="current-password"></div>
       </div>
+      <div class="fld" style="margin-top:10px"><label>View-only: owner account UID (Inspector logins only &mdash; leave empty on your own devices)</label>
+        <input id="syncOwner" placeholder="Owner UID from Firebase console &#8594; Authentication &#8594; Users"></div>
       <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
         <button class="btn btn-sm btn-navy" id="syncConnect">Connect &amp; sign in</button>
         <button class="btn btn-sm" id="syncOff" style="color:var(--red); border-color:#F0C4CA;">Disconnect</button>
@@ -529,7 +535,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.2.2";
+const APP_VERSION = "V.2.2.3";
 /* ================= state ================= */
 const LS_KEY = "bv_jobs_v1";
 let state = { jobs: [], view: "jobs", activeId: null, lastImageBlob: null, autoDate: "" };
@@ -639,7 +645,7 @@ function persistBoats(){
   sortBoats();
   boatsUpdatedAt = Date.now();
   persistBoatsLocal();
-  if(fb.on && fb.db){
+  if(fb.on && fb.db && !fb.viewOnly){
     fb.db.collection("users").doc(fb.uid).collection("meta").doc("boats")
       .set({list: JSON.parse(JSON.stringify(boats)), updatedAt: boatsUpdatedAt})
       .catch(()=>{});
@@ -666,7 +672,7 @@ function persistNotesLocal(){
 function persistNotes(){
   notesUpdatedAt = Date.now();
   persistNotesLocal();
-  if(fb.on && fb.db){
+  if(fb.on && fb.db && !fb.viewOnly){
     fb.db.collection("users").doc(fb.uid).collection("meta").doc("notes")
       .set({list: JSON.parse(JSON.stringify(notes)), updatedAt: notesUpdatedAt})
       .catch(()=>{});
@@ -721,7 +727,7 @@ function persistClients(){
   sortClients();
   clientsUpdatedAt = Date.now();
   persistClientsLocal();
-  if(fb.on && fb.db){
+  if(fb.on && fb.db && !fb.viewOnly){
     fb.db.collection("users").doc(fb.uid).collection("meta").doc("clients")
       .set({list: JSON.parse(JSON.stringify(clients)), updatedAt: clientsUpdatedAt})
       .catch(()=>{});
@@ -1172,23 +1178,27 @@ function show(view){
   const bar = document.getElementById("actbar"), barIn = document.getElementById("actbarIn");
   if(view === "edit"){
     bar.style.display = "";
-    barIn.innerHTML = '<button class="btn btn-gold" id="abCalc" style="flex:0 0 auto;">Calculator</button>' +
+    barIn.innerHTML = '<button class="btn" id="abNotes" style="flex:0 0 auto;">Notes</button>' +
+      '<button class="btn btn-gold" id="abCalc" style="flex:0 0 auto;">Calculator</button>' +
       '<button class="btn btn-navy" id="abPreview">Preview &amp; send &nbsp;&#8250;</button>';
+    document.getElementById("abNotes").onclick = toggleNotes;
     document.getElementById("abCalc").onclick = toggleCalc;
     document.getElementById("abPreview").onclick = ()=>{ renderPreview(); show("preview"); };
     requestAnimationFrame(()=>autosizeAll(document.getElementById("view-edit")));
   } else if(view === "preview"){
     bar.style.display = "";
     barIn.innerHTML =
+      '<button class="btn" id="pvNotes" style="flex:0 0 auto;">Notes</button>' +
       '<button class="btn btn-navy" id="abImage">Create image</button>' +
       '<button class="btn btn-red" id="abEmail">Open email</button>';
+    document.getElementById("pvNotes").onclick = toggleNotes;
     document.getElementById("abImage").onclick = generateImage;
     document.getElementById("abEmail").onclick = openEmail;
   } else {
     bar.style.display = "none";
   }
   if(view !== "edit") clearInterval(state._mapCdI);
-  document.getElementById("notesFab").style.display = "flex";
+  document.getElementById("notesFab").style.display = (view === "jobs" || view === "help") ? "flex" : "none";
   if(view !== "edit") document.getElementById("calcPanel").style.display = "none";
   document.getElementById("jobRail").classList.toggle("railon", view === "edit" || view === "preview");
   window.scrollTo(0,0);
@@ -1383,11 +1393,13 @@ function renderPurge(){
 document.getElementById("jobSearch").addEventListener("input", renderJobs);
 document.getElementById("btnNewJob").onclick = newJob;
 function newJob(){
+  if(fb.viewOnly){ toast("View-only login \u2014 Job Board and timeline only"); return; }
   const j = blankJob();
   state.jobs.push(j); persist();
   openJob(j.id);
 }
 function openJob(id){
+  if(fb.viewOnly){ toast("View-only login \u2014 Job Board and timeline only"); return; }
   state.activeId = id;
   renderEditor();
   show("edit");
@@ -2369,11 +2381,12 @@ function toggleCalc(){
   calcPanel.style.display = open ? "none" : "block";
   if(!open) calcIn.focus();
 }
-notesFab.onclick = ()=>{
+function toggleNotes(){
   const open = notesPanel.style.display === "block";
   notesPanel.style.display = open ? "none" : "block";
   if(!open) renderNotes();
-};
+}
+notesFab.onclick = toggleNotes;
 document.getElementById("btnAddNote").onclick = ()=>{
   notes.unshift({id: uid(), text: "", createdAt: Date.now(), pinned: false});
   persistNotes(); renderNotes();
@@ -2500,7 +2513,10 @@ function refreshAfterRemote(){
 function startSync(){
   const user = firebase.auth().currentUser;
   if(!user) return;
-  fb.uid = user.uid;
+  const savedCfg = getSyncCfg() || {};
+  fb.viewOnly = !!(savedCfg.ownerUid && savedCfg.ownerUid !== user.uid);
+  fb.uid = savedCfg.ownerUid || user.uid;
+  document.body.classList.toggle("viewer", fb.viewOnly);
   fb.db = firebase.firestore();
   try{ fb.db.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
   const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
@@ -2569,7 +2585,7 @@ function schedulePush(){
   fb.timer = setTimeout(pushChanges, 900);
 }
 function pushChanges(){
-  if(!fb.on || !fb.db) return;
+  if(!fb.on || !fb.db || fb.viewOnly) return;
   const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
   state.jobs.forEach(j => {
     if(fb.lastPushed[j.id] === j.updatedAt) return;
@@ -2584,7 +2600,7 @@ function pushChanges(){
   });
 }
 function cloudDelete(ids){
-  if(!fb.on || !fb.db) return;
+  if(!fb.on || !fb.db || fb.viewOnly) return;
   const col = fb.db.collection("users").doc(fb.uid).collection("jobs");
   ids.forEach(id => { delete fb.lastPushed[id]; col.doc(id).delete().catch(()=>{}); });
 }
@@ -2594,6 +2610,7 @@ function openSync(){
   hideMenu();
   const cfg = getSyncCfg();
   if(cfg && cfg.email) document.getElementById("syncEmail").value = cfg.email;
+  if(cfg && cfg.ownerUid) document.getElementById("syncOwner").value = cfg.ownerUid;
   document.getElementById("syncStatus").textContent = fb.on ? "connected" : "not connected";
   syncOverlay.style.display = "block";
 }
@@ -2608,6 +2625,8 @@ document.getElementById("syncOff").onclick = ()=>{
   fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
+  fb.viewOnly = false;
+  document.body.classList.remove("viewer");
   setSyncDot("off");
   document.getElementById("syncStatus").textContent = "not connected";
   toast("Sync disconnected — this device keeps its local copy");
@@ -2626,7 +2645,8 @@ document.getElementById("syncConnect").onclick = async ()=>{
     const pw = document.getElementById("syncPw").value;
     if(!email || !pw) throw new Error("Enter email and password");
     await firebase.auth().signInWithEmailAndPassword(email, pw);
-    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({cfg, email}));
+    const ownerUid = document.getElementById("syncOwner").value.trim();
+    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({cfg, email, ownerUid}));
     document.getElementById("syncPw").value = "";
     startSync();
     st.textContent = "connected";
