@@ -226,6 +226,10 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 .help code{font-family:Consolas,monospace; font-size:12px; background:#F2F4F9; padding:2px 5px; border-radius:5px; word-break:break-all;}
 .help .hcode{display:block; background:#F2F4F9; border-left:3px solid var(--navy); padding:8px 11px; border-radius:6px; font-family:Consolas,monospace; font-size:12px; margin:6px 0 12px; word-break:break-all;}
 .help .hnote{background:#FCEBED; border-left:3px solid var(--red); padding:8px 11px; border-radius:6px; font-size:13px; margin:6px 0 12px;}
+.help .copywrap{margin:6px 0 0;}
+.help .copybtn{font-size:12px;}
+.help .cpblock{background:#F2F4F9; border:1px solid var(--line); border-left:3px solid var(--navy); border-radius:6px; padding:11px 13px; margin:8px 0 16px; font-family:Consolas,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-word; max-height:320px; overflow:auto;}
+body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
 /* saved clients editor */
 .clirow{border:1px solid var(--line); border-radius:10px; padding:9px 10px; margin-bottom:9px; background:#FBFCFE;}
 .clirow .cr-h{display:flex; gap:8px; align-items:center; margin-bottom:7px;}
@@ -370,7 +374,11 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
       <div class="dsec" id="dsecJob">
       <div class="card-h"><h2>Job information</h2><span class="tag" id="lastSentTag" style="color:var(--deep)"></span><span class="tag" id="savedTag"></span><span class="chev">&#9662;</span></div>
       <div class="card-b"><div class="grid2" id="secJob"></div>
-      <div id="boatCtl" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div></div>
+      <div id="boatCtl" style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;"></div>
+      <div id="updHistWrap" style="margin-top:14px;">
+        <div style="font-family:'Archivo'; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--label); margin-bottom:5px;">Update History</div>
+        <div id="updHistField" tabindex="0" style="border:1px solid var(--line); border-radius:9px; padding:9px 11px; min-height:40px; font-size:13.5px; line-height:1.55; white-space:pre-wrap; color:var(--deep); background:#FBFCFE; cursor:pointer;"></div>
+      </div></div>
       </div>
     </div>
     <div class="card">
@@ -537,7 +545,7 @@ body.dark{scrollbar-color:#2A3450 #0F1830;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.3.1";
+const APP_VERSION = "V.2.4.2";
 /* Update image render scale. Layout is 720px wide, so final PNG width = 720 * IMG_SCALE.
    1 => 720px (current, smallest readable). 1.25 => 900px. 1.5 => 1080px. 2 => 1440px (original, very large). */
 const IMG_SCALE = 1;
@@ -818,7 +826,8 @@ const DOC_TITLES = {
   vol: "Volume comparison (unconfirmed)",
   etf: "Estimated time of finish",
   comments: "Operational Comments",
-  position: "Vessel position"
+  position: "Vessel position",
+  history: "Update History"
 };
 /* ================= field configs ================= */
 const JOB_FIELDS = [
@@ -911,7 +920,7 @@ const RATE_FIELDS = [
 
 function blankJob(){
   const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(), customTimes: [],
-    status:"1.1 Pending", incVol:true, incEtf:false, incTimes:true, incRate:false, asOf:"", comments:"", refNo:"", mapImg:"",
+    status:"1.1 Pending", incVol:true, incEtf:false, incTimes:true, incRate:false, asOf:"", comments:"", refNo:"", mapImg:"", updateHistory:"",
     emails:[{to:"", cc:"", subject:"", ref:"", relay:"*BV*"}], sendIdx:0 };
   [].concat(JOB_FIELDS, MOVE_TIMES, VOL_FIELDS, ETF1_FIELDS, ETF2_FIELDS, RATE_FIELDS)
     .forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
@@ -976,10 +985,39 @@ function updateLastSentTag(j){
   };
 }
 function markSent(j){
-  j.lastSent = Date.now();
-  j.updatedAt = Date.now();
+  const now = Date.now();
+  const line = "Sent " + fmtSentAt(now);
+  const rest = (j.updateHistory && j.updateHistory.trim())
+    ? j.updateHistory.replace(/^\n+/, "").split("\n") : [];
+  /* Collapse into the top line if the last send was within 30 minutes
+     (same update round to multiple customers). Otherwise start a new line. */
+  const within = j.lastSent && (now - j.lastSent) <= 30 * 60 * 1000;
+  if(within && rest.length){
+    rest[0] = line;
+    j.updateHistory = rest.join("\n");
+  } else {
+    j.updateHistory = line + (rest.length ? "\n" + rest.join("\n") : "");
+  }
+  j.lastSent = now;
+  j.updatedAt = now;
   persist();
   updateLastSentTag(j);
+  renderUpdHist(j);
+}
+function renderUpdHist(j){
+  const el = document.getElementById("updHistField");
+  if(!el) return;
+  const txt = (j && j.updateHistory) ? j.updateHistory.trim() : "";
+  el.textContent = txt || "\u2014";
+  el.style.color = txt ? "var(--deep)" : "var(--hint)";
+  el.onclick = ()=>{
+    const j2 = activeJob(); if(!j2) return;
+    const v = prompt("Update History \u2014 one 'Sent ...' line per update, newest at top.\nEdit freely; this shows on the image when not empty.", j2.updateHistory || "");
+    if(v == null) return;
+    j2.updateHistory = v.replace(/\r/g, "");
+    j2.updatedAt = Date.now(); persist();
+    renderUpdHist(j2);
+  };
 }
 function sentActive(j){
   const st = parseFloat(j.status);
@@ -1439,6 +1477,7 @@ function renderEditor(){
   document.getElementById("secRate").innerHTML = RATE_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   j.asOf = nowStamp(); persist();
   updateLastSentTag(j);
+  renderUpdHist(j);
   document.getElementById("secComments").innerHTML =
     '<div class="fld"><label>Update info as of</label><div class="row">' +
       '<input data-k="asOf" value="' + esc(j.asOf) + '" placeholder="6/5/26 1918">' +
@@ -1865,7 +1904,7 @@ document.getElementById("btnDup").onclick = ()=>{
   const j = activeJob(); if(!j) return;
   const c = JSON.parse(JSON.stringify(j));
   c.id = uid(); c.createdAt = Date.now(); c.updatedAt = Date.now();
-  c.status = "1.1 Pending"; c.comments = ""; c.asOf = "";
+  c.status = "1.1 Pending"; c.comments = ""; c.asOf = ""; c.updateHistory = ""; c.lastSent = null;
   state.jobs.push(c); persist();
   openJob(c.id); toast("Job duplicated");
 };
@@ -2018,6 +2057,9 @@ function docHTML(j){
   }
   if(j.mapImg){
     h += '<div class="doc-sec"><h3>' + DOC_TITLES.position + '</h3><img class="doc-mapimg" src="' + j.mapImg + '" alt="Vessel position map"></div>';
+  }
+  if(j.updateHistory && j.updateHistory.trim()){
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.history + '</h3><div class="doc-comments">' + esc(j.updateHistory.trim()) + "</div></div>";
   }
   return h;
 }
@@ -2725,6 +2767,7 @@ const HELP_USING = `
 <h4>Saved boats</h4>
 <ul>
 <li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
+<li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you actually send (Open email or the Shortcut) a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Sends within 30 minutes of each other count as one entry — the time just updates in place — so firing off 3 or 10 customers in one sitting makes a single line; a later update (more than 30 minutes on) starts a new line. Tap the field to edit or correct it by hand. When it has at least one line it prints at the bottom of the update image, under the map.</li>
 <li><b>Recall a boat:</b> start typing in Vsl/Boat name — saved names appear as suggestions. Pick one (or finish typing an exact saved name) and the Boat link fills in automatically and the live map refreshes.</li>
 <li><b>Manage boats:</b> opens the library. Edit a name or link in place (saves when you leave the field) or delete with the &#215; button. Deleting a saved boat never changes any job.</li>
 </ul>
@@ -2807,9 +2850,63 @@ const HELP_USING = `
 <p>Your job data lives in the browser, not the file — updates never touch it.</p>`;
 
 const HELP_PA = `
-<h3>How the relay works (read once)</h3>
-<p><b>Flow B (the Filer)</b> watches your Inbox. Any email whose subject contains <code>REF#</code> is COPIED (never moved) into a mail folder named after that reference, inside a parent folder called <code>BV Jobs</code>. Folders are created automatically. Because you CC yourself on every update, your own updates get filed alongside client replies, so each job folder always holds the complete thread.</p>
-<p><b>Flow A (the Relay)</b> fires only on emails FROM you, TO you, with <code>*BV*</code> in the subject. It reads the REF#, opens exactly that folder, takes the newest email in it, and replies-all with your update image in the body. If anything is missing it emails YOU a notice and stops — it never guesses.</p>
+<h3>What this does (read once)</h3>
+<p><b>Flow B (the Filer)</b> watches your Inbox and keeps a tidy copy of every job email in one place, so at billing time the whole job is in a single folder. When an email is <b>from you</b> and its subject contains both <code>REF#</code> and <code>*BV*</code>, it is COPIED (never moved) into a mail folder named after that reference, inside a parent folder called <code>BV Jobs</code>. Folders are created automatically. The <b>from-you</b> test is what makes this safe when the whole company uses the tool: a colleague&rsquo;s update that CCs you is from <i>them</i>, so it never lands in your folders. Client replies come back from the client (not filed on their own), but your reply to them quotes their message beneath yours and is from you — so the full exchange ends up in the folder.</p>
+<div class="hnote"><b>This is the only flow.</b> The tool sends your update straight to the customer using the To/CC saved in each email block — no automation is involved in delivering it. Flow B just quietly files your copy for the record. There is no second flow.</div>
+
+<h3>Fast path &mdash; build with Copilot</h3>
+<p>Power Automate has a <b>Copilot</b> panel that builds a flow from a plain-English description. This is faster and far less error-prone than clicking in every action by hand. The prompt below describes the whole flow. Copy it, paste it into Copilot, and let it build — then use the manual steps further down only to spot-check names and expressions, or as a fallback if Copilot stalls.</p>
+<div class="hnote"><b>Before you paste:</b> open <code>https://make.powerautomate.com</code> &#8594; <b>Create</b> &#8594; <b>Start from Copilot</b> (or open any blank cloud flow and click the <b>Copilot</b> icon). Sign in with your WORK Microsoft 365 account. After Copilot builds a flow, still open each <b>Send an HTTP request</b> card and confirm its <b>Body</b> matches the prompt exactly — that is the one spot Copilot sometimes reformats.</div>
+
+<h4>Copilot prompt &mdash; FLOW B (the Filer)</h4>
+<p>Build this one first. It watches your Inbox and copies each job email into its own folder.</p>
+<div class="copywrap"><button class="btn btn-sm copybtn" data-copy="cpB">Copy Flow B prompt</button></div>
+<pre class="cpblock" id="cpB">Build an automated cloud flow using Office 365 Outlook and my work account.
+
+Trigger: "When a new email arrives (V3)" on the Inbox. Include Attachments = Yes. Folder = Inbox.
+
+Then add a Condition named "ShouldFile" that joins these three tests with AND:
+1. From contains: paul.young@bureauveritas.com
+2. Subject contains: REF#
+3. Subject contains: *BV*
+Put every following action in the "If yes" branch. Leave "If no" empty. (Row 1, From contains my address, is what keeps a colleague's copy out of my folders when they CC me on their own tool-generated update. All three tests use "contains" so subject prefixes like RE:, FW:, or [EXTERNAL] do not matter.)
+
+Inside "If yes", in this order:
+
+1. Compose named "SplitSubject" with input expression: split(triggerOutputs()?['body/subject'], ' - ')
+
+2. Filter array named "FindRef": From = outputs('SplitSubject'), filter condition (advanced mode): @contains(item(), 'REF#')
+
+3. Compose named "RefNumber" with input expression: trim(substring(first(body('FindRef')), indexOf(first(body('FindRef')), 'REF#')))
+
+4. Compose named "RefDigits" with input expression: trim(replace(outputs('RefNumber'), 'REF#', ''))
+
+5. Initialize variable "ParentId", type String, value empty.
+
+6. Send an HTTP request (Office 365 Outlook) named "GetTopFolders": Method GET, URI expression: concat('https://graph.microsoft.com/v1.0/me/mailFolders?$top=250')
+
+7. Filter array named "MatchParent": From = body('GetTopFolders')?['value'], advanced condition: @equals(item()?['displayName'], 'BV Jobs')
+
+8. Condition "ParentExists": length(body('MatchParent')) is greater than 0.
+   If yes: Set variable ParentId = first(body('MatchParent'))?['id']
+   If no: Send an HTTP request named "CreateParent": POST, URI expression concat('https://graph.microsoft.com/v1.0/me/mailFolders'), Body expression: concat('{"displayName":"BV Jobs"}'). Then Set variable ParentId = body('CreateParent')?['id']
+
+9. Initialize variable "JobFolderId", type String, value empty. (Put this near the top with the other Initialize variable if the builder requires all Initialize actions before conditions.)
+
+10. Send an HTTP request named "GetJobFolders": GET, URI expression: concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders?$top=250')
+
+11. Filter array named "MatchJob": From = body('GetJobFolders')?['value'], advanced condition: @equals(item()?['displayName'], outputs('RefDigits'))
+
+12. Condition "JobFolderExists": length(body('MatchJob')) is greater than 0.
+    If yes: Set variable JobFolderId = first(body('MatchJob'))?['id']
+    If no: Send an HTTP request named "CreateJobFolder": POST, URI expression concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders'), Body expression: concat('{"displayName":"', outputs('RefDigits'), '"}'). Then Set variable JobFolderId = body('CreateJobFolder')?['id']
+
+13. Send an HTTP request named "CopyMail": POST, URI expression: concat('https://graph.microsoft.com/v1.0/me/messages/', triggerOutputs()?['body/id'], '/copy'), Body expression: concat('{"destinationId":"', variables('JobFolderId'), '"}')
+
+Every HTTP request Body must be a single expression built with concat, not typed text mixed with a token. Name the flow "BV Job Filer".</pre>
+
+<hr style="border:none; border-top:1px solid var(--line); margin:22px 0;">
+<h3>Manual build (fallback &mdash; full step-by-step)</h3>
 <div class="hnote"><b>Two rules that prevent 90% of problems.</b> (1) Every formula must be entered through the <b>Expression tab</b> and end up as a pink <b>fx chip</b> — plain black text will not run. (2) Rename every action <b>immediately</b> after adding it, using the exact names in this guide — the formulas refer to those names, and renaming later breaks formulas already written.</div>
 <h4>0 &mdash; Before you begin</h4>
 <ol>
@@ -2818,7 +2915,7 @@ const HELP_PA = `
 <li>On a computer, open <code>https://make.powerautomate.com</code> in your browser.</li>
 <li>Sign in with your WORK Microsoft 365 account — the same login as Outlook.</li>
 </ol>
-<h3>FLOW B — the Filer (build this one first)</h3>
+<h3>FLOW B — the Filer</h3>
 <h4>B1 &mdash; Create the flow</h4>
 <ol>
 <li>In the left menu click <b>My flows</b>.</li>
@@ -2860,15 +2957,11 @@ const HELP_PA = `
 <h4>B5 &mdash; The gate: should this email be filed? (Condition)</h4>
 <ol>
 <li>Click <b>+ New step</b>, search <code>condition</code>, click <b>Condition</b> (Control). Rename it <code>ShouldFile</code> (&#8943; &#8594; Rename).</li>
-<li>ROW 1 — click the first (left) value box, and in the popup&rsquo;s <b>Dynamic content</b> tab click <b>Subject</b>.</li>
-<li>ROW 1 — set the middle dropdown to <b>contains</b>.</li>
-<li>ROW 1 — click the right box and type <code>REF#</code></li>
-<li>Click <b>+ Add</b> &#8594; <b>Add row</b>. Make sure the dropdown above the rows says <b>And</b>.</li>
-<li>ROW 2 — click the left box, click the <b>Expression</b> tab, paste <span class="hcode">triggerOutputs()?['body/toRecipients']</span> and click OK (pink fx chip).</li>
-<li>ROW 2 — set the middle dropdown to <b>does not contain</b>, and type your work email address in the right box.</li>
-<li>Click <b>+ Add</b> &#8594; <b>Add row</b> again.</li>
-<li>ROW 3 — left box: Dynamic content &#8594; <b>Subject</b>. Middle: <b>does not contain</b>. Right box: type <code>*BV*</code></li>
-<li>Every remaining Flow B action goes inside the <b>TRUE (If yes)</b> branch. Leave the FALSE branch empty. (Why these rows: relay commands are addressed TO you and carry *BV* — rows 2–3 keep them out; your CC&rsquo;d client updates are addressed TO clients, so they pass and get filed.)</li>
+<li>Make sure the dropdown above the rows says <b>And</b>.</li>
+<li>ROW 1 — left box: <b>Dynamic content</b> tab &#8594; <b>From</b>. Middle: <b>contains</b>. Right box: type your work email, <code>paul.young@bureauveritas.com</code></li>
+<li>Click <b>+ Add</b> &#8594; <b>Add row</b>. ROW 2 — left box: Dynamic content &#8594; <b>Subject</b>. Middle: <b>contains</b>. Right box: type <code>REF#</code></li>
+<li>Click <b>+ Add</b> &#8594; <b>Add row</b>. ROW 3 — left box: Dynamic content &#8594; <b>Subject</b>. Middle: <b>contains</b>. Right box: type <code>*BV*</code></li>
+<li>Every remaining Flow B action goes inside the <b>TRUE (If yes)</b> branch. Leave the FALSE branch empty. (Why these rows, and why this is safe company-wide: <b>Row 1 is the linchpin</b> — it files only mail YOU sent. When a colleague using the same tool CCs you on THEIR update, it is From <i>them</i>, so it fails Row 1 and is never filed into your BV Jobs. Row 2 requires a job reference. Row 3 requires your tool&rsquo;s <code>*BV*</code> tag. All three use <b>contains</b>, so <code>RE:</code>, <code>FW:</code>, <code>[EXTERNAL]</code> or any other prefix in front of the subject makes no difference. Client replies come back From the client, so they do not file on their own — but your next reply to them carries the client&rsquo;s message quoted beneath yours, and THAT is From you, so the full exchange is captured.)</li>
 </ol>
 <h4>B6 &mdash; Action: SplitSubject (chops the subject at every " - ")</h4>
 <ol>
@@ -2994,7 +3087,7 @@ const HELP_PA = `
 <li>Inside the <b>TRUE (If yes)</b> branch of this NEW JobFolderExists condition &#8594; <b>Add an action</b> &#8594; <b>Set variable</b>. Name dropdown: <b>JobFolderId</b>. Value &#8594; Expression tab &#8594; <span class="hcode">first(body('MatchJob'))?['id']</span></li>
 <li>Inside the <b>FALSE (If no)</b> branch of JobFolderExists &#8594; <b>Add an action</b> &#8594; <b>Send an HTTP request</b> (Office 365 Outlook). Rename it <code>CreateJobFolder</code>. Method dropdown: <b>POST</b>.</li>
 <li>CreateJobFolder URI &#8594; Expression tab &#8594; paste <span class="hcode">concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders')</span> &#8594; OK.</li>
-<li>CreateJobFolder Body — this mixes text and an expression: type <code>{"displayName": "</code> then WITHOUT closing the popup click the <b>Expression</b> tab, paste <span class="hcode">outputs('RefDigits')</span>, click OK, then type <code>"}</code> after the fx chip.</li>
+<li>CreateJobFolder Body &#8594; click the <b>Body</b> box, switch to the <b>Expression</b> tab, and paste this whole line as ONE expression: <span class="hcode">concat('{"displayName":"', outputs('RefDigits'), '"}')</span> &#8594; OK. (This builds the entire JSON string in one expression, so there is no fragile mix of typed text and an fx chip. The old typed-text method was the #1 cause of CreateJobFolder failures.)</li>
 <li>Still inside that same FALSE branch, BELOW the CreateJobFolder card &#8594; <b>Add an action</b> &#8594; <b>Set variable</b>. Name: <b>JobFolderId</b>. Value &#8594; Expression tab &#8594; <span class="hcode">body('CreateJobFolder')?['id']</span></li>
 </ol>
 <h4>B16 &mdash; Action: CopyMail (copies the email into the job folder)</h4>
@@ -3002,266 +3095,26 @@ const HELP_PA = `
 <li>Scroll to the very BOTTOM of the flow, below the whole JobFolderExists condition box — not inside either of its branches. Click the <b>+</b> there &#8594; <b>Add an action</b>. Again: nothing moves; this lands last, on the main line.</li><li>Search <code>send an http request</code>, click <b>Send an HTTP request</b> (Office 365 Outlook). Rename it <code>CopyMail</code>.</li><li>Sanity check — top to bottom your flow reads: SplitSubject, FindRef, RefNumber, RefDigits, GetTopFolders, MatchParent, <b>ParentExists</b> (branches inside), GetJobFolders, MatchJob, <b>JobFolderExists</b> (branches inside), CopyMail. Both conditions sit on the main line; only Set variable / CreateParent / CreateJobFolder live inside branches.</li>
 <li>Method &#8594; <b>POST</b>.</li>
 <li>URI &#8594; Expression tab &#8594; paste <span class="hcode">concat('https://graph.microsoft.com/v1.0/me/messages/', triggerOutputs()?['body/id'], '/copy')</span> &#8594; OK.</li>
-<li>Body — type <code>{"destinationId": "</code> then Expression tab &#8594; paste <span class="hcode">variables('JobFolderId')</span> &#8594; OK, then type <code>"}</code></li>
+<li>Body &#8594; click the <b>Body</b> box, switch to the <b>Expression</b> tab, and paste this whole line as ONE expression: <span class="hcode">concat('{"destinationId":"', variables('JobFolderId'), '"}')</span> &#8594; OK. (One expression builds the whole JSON string — no typed-text/fx-chip mix to break.)</li>
 <li>Click <b>Save</b> (top right). Fix any card with a red underline before leaving — it is almost always a typo in an expression or a name mismatch.</li>
 </ol>
 <h4>B17 &mdash; Test Flow B</h4>
 <ol>
-<li>Send an email with subject <code>REF# FILETEST1 - UPDATE - TEST</code> arranged so YOU are only in CC (To: a personal address or colleague, CC: your work address).</li>
+<li>From your own work account, send an email with subject <code>*BV* REF# FILETEST1 - UPDATE - TEST</code> to a client or personal address, with your own work address in CC (this mirrors a real update: From you, subject carries REF# and *BV*).</li>
 <li>Wait about a minute, then check Outlook&rsquo;s folder list: a folder <b>BV Jobs</b> must exist containing a child folder <b>FILETEST1</b> with a copy of the email inside.</li>
 <li>Confirm the original email is still in your Inbox (copy, not move).</li>
 <li>Send a second email with the same REF# — it must land in the SAME folder, not create a duplicate.</li>
 <li>If anything is off: My flows &#8594; BV Job Filer &#8594; 28-day run history &#8594; click the run — every card shows its inputs and outputs; the first card with wrong/empty output is your culprit.</li>
-</ol>
-<h3>FLOW A — the Relay (build after Flow B works)</h3>
-<h4>A1 &mdash; Create the flow</h4>
-<ol>
-<li>Left menu &#8594; <b>My flows</b>.</li>
-<li>Click <b>+ New flow</b> &#8594; <b>Automated cloud flow</b>.</li>
-<li>Flow name: <code>BV Update Relay</code></li>
-<li>Trigger search: type <code>when a new email arrives</code> and click <b>When a new email arrives (V3)</b>.</li>
-<li>Click <b>Create</b>.</li>
-</ol>
-<h4>A2 &mdash; Configure the trigger (the safety filters live here)</h4>
-<ol>
-<li>Click the trigger card &#8594; <b>Show advanced options</b>.</li>
-<li>Folder: <b>Inbox</b>.</li>
-<li><b>From</b>: type your work email address — the relay only obeys emails from you.</li>
-<li><b>To</b>: type your work email address again — this is the loop-breaker: your CC&rsquo;d client updates have clients in To, so they can NEVER trigger the relay; only commands you address to yourself can.</li>
-<li><b>Subject Filter</b>: type <code>*BV*</code> (with the asterisks).</li>
-<li><b>Include Attachments</b>: <b>Yes</b> — critical; this is how the update image travels, even when it was pasted into the body rather than attached.</li>
-</ol>
-<h4>A3 &mdash; Action: Initialize variable ParentId</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>initialize variable</code>.</li>
-<li>In the results list click <b>Initialize variable</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>Init ParentId</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click the <b>Name</b> box and type exactly <code>ParentId</code>.</li>
-<li>Click the <b>Type</b> dropdown and choose <b>String</b>.</li>
-<li>Leave <b>Value</b> empty.</li>
-</ol>
-<h4>A4 &mdash; Action: Initialize variable JobFolderId</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>initialize variable</code>.</li>
-<li>In the results list click <b>Initialize variable</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>Init JobFolderId</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click the <b>Name</b> box and type exactly <code>JobFolderId</code>.</li>
-<li>Click the <b>Type</b> dropdown and choose <b>String</b>.</li>
-<li>Leave <b>Value</b> empty.</li>
-</ol>
-<h4>A5 &mdash; Action: BigAttachments (isolates the update image from signature icons)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>filter array</code>.</li>
-<li>In the results list click <b>Filter array (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>BigAttachments</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>From</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">triggerOutputs()?['body/attachments']</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-<li>Below the From box, click the small link <b>Edit in advanced mode</b>.</li>
-<li>Delete anything already in the box.</li>
-<li>Paste EXACTLY: <span class="hcode">@greater(item()?['size'], 50000)</span></li>
-</ol>
-<h4>A6 &mdash; Action: SplitSubject (chops the subject at every " - ")</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>compose</code>.</li>
-<li>In the results list click <b>Compose (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>SplitSubject</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>Inputs</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">split(triggerOutputs()?['body/subject'], ' - ')</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-</ol>
-<h4>A7 &mdash; Action: FindRef (keeps the piece containing REF#)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>filter array</code>.</li>
-<li>In the results list click <b>Filter array (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>FindRef</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>From</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">outputs('SplitSubject')</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-<li>Below the From box, click the small link <b>Edit in advanced mode</b>.</li>
-<li>Delete anything already in the box.</li>
-<li>Paste EXACTLY: <span class="hcode">@contains(item(), 'REF#')</span></li>
-</ol>
-<h4>A8 &mdash; Action: RefNumber (slices from REF# onward)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>compose</code>.</li>
-<li>In the results list click <b>Compose (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>RefNumber</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>Inputs</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">trim(substring(first(body('FindRef')), indexOf(first(body('FindRef')), 'REF#')))</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-</ol>
-<h4>A9 &mdash; Action: RefDigits (just the reference — this becomes the folder name)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>compose</code>.</li>
-<li>In the results list click <b>Compose (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>RefDigits</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>Inputs</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">trim(replace(outputs('RefNumber'), 'REF#', ''))</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-</ol>
-<h4>A10 &mdash; Action: GetTopFolders (lists your mail folders)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>send an http request</code>.</li>
-<li>In the results list click <b>Send an HTTP request &mdash; it MUST be the one inside the Office 365 Outlook connector (NOT the plain "HTTP" connector, NOT "HTTP with Microsoft Entra ID")</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>GetTopFolders</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click the <b>Method</b> dropdown and choose <b>GET</b>.</li>
-<li>Click the <b>URI</b> box and type (plain text, no expression): <code>https://graph.microsoft.com/v1.0/me/mailFolders?$top=250</code></li>
-<li>Leave <b>Body</b> empty.</li>
-<li>If a message asks you to allow or create a connection the first time, click Allow/Sign in — this is your own mailbox permission, not an IT approval.</li>
-</ol>
-<h4>A11 &mdash; Action: MatchParent (finds the folder named BV Jobs)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>filter array</code>.</li>
-<li>In the results list click <b>Filter array (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>MatchParent</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>From</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">body('GetTopFolders')?['value']</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-<li>Below the From box, click the small link <b>Edit in advanced mode</b>.</li>
-<li>Delete anything already in the box.</li>
-<li>Paste EXACTLY: <span class="hcode">@equals(item()?['displayName'], 'BV Jobs')</span></li>
-</ol>
-<h4>A12 &mdash; Condition: BV Jobs folder must exist (notify you and stop if not)</h4>
-<ol>
-<li>Click <b>+ New step</b>, search <code>condition</code>, click <b>Condition</b>. Rename it <code>ParentExists</code>.</li>
-<li>Left box &#8594; Expression tab &#8594; paste <span class="hcode">length(body('MatchParent'))</span> &#8594; OK. Middle: <b>is greater than</b>. Right: <code>0</code></li>
-<li>TRUE branch &#8594; Add an action &#8594; <b>Set variable</b>. Name: <b>ParentId</b>. Value &#8594; Expression &#8594; <span class="hcode">first(body('MatchParent'))?['id']</span></li>
-<li>Still inside the <b>FALSE (If no)</b> branch, click <b>Add an action</b>.</li>
-<li>Search <code>send an email</code> and click <b>Send an email (V2)</b> (Office 365 Outlook). Rename it <code>NotifyNoParent</code> (&#8943; &#8594; Rename).</li>
-<li>Click <b>To</b> and type your own work email address.</li>
-<li>Click <b>Subject</b> and type <code>BV Relay notice: no BV Jobs folder yet</code></li>
-<li>Click <b>Body</b> and type: The BV Jobs folder does not exist yet, so there is nothing to reply to. Nothing was sent. (This only happens before Flow B has ever filed an email.)</li>
-<li>Click <b>Add an action</b> again (still in the FALSE branch), search <code>terminate</code>, click <b>Terminate</b> (Control).</li>
-<li>Set its <b>Status</b> dropdown to <b>Succeeded</b>. The flow now ends cleanly here having sent nothing to any client.</li>
-</ol>
-<h4>A13 &mdash; Action: GetJobFolders (lists folders inside BV Jobs)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>send an http request</code>.</li>
-<li>In the results list click <b>Send an HTTP request (Office 365 Outlook)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>GetJobFolders</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click the <b>Method</b> dropdown and choose <b>GET</b>.</li>
-<li>Click inside the <b>URI</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">concat('https://graph.microsoft.com/v1.0/me/mailFolders/', variables('ParentId'), '/childFolders?$top=250')</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-<li>Leave <b>Body</b> empty.</li>
-</ol>
-<h4>A14 &mdash; Action: MatchJob (finds this job&rsquo;s folder by its reference)</h4>
-<ol>
-<li>Click <b>+ New step</b> (the + circle under the previous card).</li>
-<li>In the search box type <code>filter array</code>.</li>
-<li>In the results list click <b>Filter array (Data Operation)</b>. A new card appears.</li>
-<li>Click the <b>&#8943; (three dots)</b> in the top-right corner of the new card, click <b>Rename</b>, delete the old name, type exactly <code>MatchJob</code> and press Enter. The name must match exactly — later expressions refer to it.</li>
-<li>Click inside the <b>From</b> box. A popup appears with two tabs: <b>Dynamic content</b> and <b>Expression</b>.</li>
-<li>Click the <b>Expression</b> tab.</li>
-<li>Paste EXACTLY the following into the formula box (every quote and bracket matters): <span class="hcode">body('GetJobFolders')?['value']</span></li>
-<li>Click <b>OK</b> (or <b>Add</b>).</li>
-<li>Confirm the box now shows a small pink <b>fx chip</b> — if you see plain black text instead, it was pasted as text: delete it and redo steps 1–4 through the Expression tab.</li>
-<li>Below the From box, click the small link <b>Edit in advanced mode</b>.</li>
-<li>Delete anything already in the box.</li>
-<li>Paste EXACTLY: <span class="hcode">@equals(item()?['displayName'], outputs('RefDigits'))</span></li>
-</ol>
-<h4>A15 &mdash; Condition: this job&rsquo;s folder must exist (notify and stop if not)</h4>
-<ol>
-<li>Click <b>+ New step</b> (after ParentExists, main level), search <code>condition</code>, click <b>Condition</b>. Rename it <code>JobFolderFound</code>.</li>
-<li>Left box &#8594; Expression &#8594; <span class="hcode">length(body('MatchJob'))</span>. Middle: <b>is greater than</b>. Right: <code>0</code></li>
-<li>TRUE branch &#8594; Add an action &#8594; <b>Set variable</b>. Name: <b>JobFolderId</b>. Value &#8594; Expression &#8594; <span class="hcode">first(body('MatchJob'))?['id']</span></li>
-<li>Still inside the <b>FALSE (If no)</b> branch, click <b>Add an action</b>.</li>
-<li>Search <code>send an email</code> and click <b>Send an email (V2)</b> (Office 365 Outlook). Rename it <code>NotifyNoFolder</code> (&#8943; &#8594; Rename).</li>
-<li>Click <b>To</b> and type your own work email address.</li>
-<li>Click <b>Subject</b> and type <code>BV Relay notice: no folder for </code> then, with the cursor at the end, click the <b>Expression</b> tab in the popup, paste <span class="hcode">outputs('RefDigits')</span> and click OK — the subject ends with an fx chip.</li>
-<li>Click <b>Body</b> and type: No job folder exists for this reference, so there is no thread to reply to. Nothing was sent. Check that at least one email with this REF# has arrived in your Inbox — did you CC yourself on the first update?</li>
-<li>Click <b>Add an action</b> again (still in the FALSE branch), search <code>terminate</code>, click <b>Terminate</b> (Control).</li>
-<li>Set its <b>Status</b> dropdown to <b>Succeeded</b>. The flow now ends cleanly here having sent nothing to any client.</li>
-</ol>
-<h4>A16 &mdash; Action: GetJobMail (the newest email in the job folder)</h4>
-<ol>
-<li>Click <b>+ New step</b> after JobFolderFound (main level), search <code>get emails</code>, click <b>Get emails (V3)</b> (Office 365 Outlook). Rename it <code>GetJobMail</code>.</li>
-<li>Click the <b>Folder</b> field&rsquo;s picker icon (right side) and choose <b>Enter custom value</b> — the field becomes a text box.</li>
-<li>Click into it &#8594; <b>Expression</b> tab &#8594; paste <span class="hcode">variables('JobFolderId')</span> &#8594; OK.</li>
-<li>Click <b>Show advanced options</b>. Set <b>Fetch Only Unread Messages</b> to <b>No</b> — the default Yes silently breaks everything.</li>
-<li>Set <b>Include Attachments</b> to <b>No</b>.</li>
-<li>Set <b>Top</b> to <code>1</code> — Get emails returns newest first, so Top 1 = the most recent email in the folder.</li>
-</ol>
-<h4>A17 &mdash; Safety gate 1: the folder actually has mail</h4>
-<ol>
-<li>Click <b>+ New step</b>, search <code>condition</code>, click <b>Condition</b>. Rename it <code>FolderHasMail</code>.</li>
-<li>Left box &#8594; Expression &#8594; <span class="hcode">length(body('GetJobMail')?['value'])</span>. Middle: <b>is greater than</b>. Right: <code>0</code></li>
-<li>Still inside the <b>FALSE (If no)</b> branch, click <b>Add an action</b>.</li>
-<li>Search <code>send an email</code> and click <b>Send an email (V2)</b> (Office 365 Outlook). Rename it <code>NotifyEmptyFolder</code> (&#8943; &#8594; Rename).</li>
-<li>Click <b>To</b> and type your own work email address.</li>
-<li>Click <b>Subject</b> and type <code>BV Relay notice: folder empty for </code> then, with the cursor at the end, click the <b>Expression</b> tab in the popup, paste <span class="hcode">outputs('RefDigits')</span> and click OK — the subject ends with an fx chip.</li>
-<li>Click <b>Body</b> and type: The job folder exists but contains no emails. Nothing was sent.</li>
-<li>Click <b>Add an action</b> again (still in the FALSE branch), search <code>terminate</code>, click <b>Terminate</b> (Control).</li>
-<li>Set its <b>Status</b> dropdown to <b>Succeeded</b>. The flow now ends cleanly here having sent nothing to any client.</li>
-</ol>
-<h4>A18 &mdash; Safety gate 2: the anchor email really belongs to this job</h4>
-<ol>
-<li>Inside the <b>TRUE branch of FolderHasMail</b>, click <b>Add an action</b>, search <code>condition</code>, click <b>Condition</b>. Rename it <code>RefGate</code>.</li>
-<li>Left box &#8594; Expression tab &#8594; paste <span class="hcode">first(body('GetJobMail')?['value'])?['subject']</span> &#8594; OK.</li>
-<li>Middle dropdown: <b>contains</b>.</li>
-<li>Right box &#8594; Expression tab &#8594; paste <span class="hcode">outputs('RefDigits')</span> &#8594; OK. (Both sides are fx chips.)</li>
-<li>Still inside the <b>FALSE (If no)</b> branch, click <b>Add an action</b>.</li>
-<li>Search <code>send an email</code> and click <b>Send an email (V2)</b> (Office 365 Outlook). Rename it <code>NotifyGateFail</code> (&#8943; &#8594; Rename).</li>
-<li>Click <b>To</b> and type your own work email address.</li>
-<li>Click <b>Subject</b> and type <code>BV Relay notice: gate blocked </code> then, with the cursor at the end, click the <b>Expression</b> tab in the popup, paste <span class="hcode">outputs('RefDigits')</span> and click OK — the subject ends with an fx chip.</li>
-<li>Click <b>Body</b> and type: The newest email in the job folder does not carry this reference in its subject, so the relay refused to reply. Nothing was sent. Look inside the folder — something was filed there that should not be.</li>
-<li>Click <b>Add an action</b> again (still in the FALSE branch), search <code>terminate</code>, click <b>Terminate</b> (Control).</li>
-<li>Set its <b>Status</b> dropdown to <b>Succeeded</b>. The flow now ends cleanly here having sent nothing to any client.</li>
-</ol>
-<h4>A19 &mdash; DRY RUN reporter (run like this for several days)</h4>
-<ol>
-<li>Inside the <b>TRUE branch of RefGate</b>, click <b>Add an action</b>, search <code>send an email</code>, click <b>Send an email (V2)</b>. Rename it <code>DryRunReport</code>.</li>
-<li>To: your work address.</li>
-<li>Subject: type <code>BV Relay DRY RUN: </code> then Expression tab &#8594; paste <span class="hcode">outputs('RefDigits')</span> &#8594; OK.</li>
-<li>Body: type <code>Would reply-all to: </code> then Expression &#8594; <span class="hcode">first(body('GetJobMail')?['value'])?['subject']</span> &#8594; OK; press Enter for a new line; type <code>From: </code> then Expression &#8594; <span class="hcode">first(body('GetJobMail')?['value'])?['from']</span> &#8594; OK.</li>
-<li>Click <b>Save</b>. Use your normal workflow — every relay now emails you a report naming exactly which email it WOULD have replied to. Go to A20 only when it has been right every single time for days.</li>
-</ol>
-<h4>A20 &mdash; Going live: swap the dry run for the real reply</h4>
-<ol>
-<li>Open the flow for editing, find <b>DryRunReport</b> in the TRUE branch of RefGate, click its &#8943; &#8594; <b>Delete</b>.</li>
-<li>In its place click <b>Add an action</b>, search <code>reply to email</code>, click <b>Reply to email (V3)</b> (Office 365 Outlook). Rename it <code>SendReply</code>.</li>
-<li>Message Id &#8594; Expression tab &#8594; paste <span class="hcode">first(body('GetJobMail')?['value'])?['id']</span> &#8594; OK.</li>
-<li>Set <b>Reply All</b> to <b>Yes</b>.</li>
-<li>In the <b>Body</b> editor&rsquo;s toolbar click the <b>&lt;/&gt;</b> (code view) icon.</li>
-<li>Click into the body &#8594; Expression tab &#8594; paste the whole line: <span class="hcode">concat('&lt;img src="data:image/png;base64,', first(body('BigAttachments'))?['contentBytes'], '" style="max-width:100%;"&gt;')</span> &#8594; OK. This embeds your update image as the entire message body — inline, no attachment paperclip.</li>
-<li>Leave <b>Attachments</b> empty.</li>
-<li>OPTIONAL housekeeping: Add an action &#8594; <b>Delete email (V3)</b>, Message Id &#8594; Expression &#8594; <span class="hcode">triggerOutputs()?['body/id']</span> — removes the relay command from your Inbox after it has done its job.</li>
-<li>Click <b>Save</b>. Run ONE real update on a job where a wrong email would be harmless, and verify: reply-all landed on the right thread, image inline, your CC copy arrived, and Flow B filed that copy into the job folder.</li>
 </ol>
 <h3>Troubleshooting</h3>
 <ul>
 <li><b>"action has status Skipped" error:</b> an expression referenced CreateParent/CreateJobFolder outside its branch — use the variables instead.</li>
 <li><b>"Action not found":</b> a rename mismatch; names must match exactly, including capitals.</li>
 <li><b>HTTP 403:</b> wrong action — it must be Send an HTTP request inside Office 365 Outlook, not the premium HTTP connector.</li>
-<li><b>Relay says no folder but the job exists:</b> compare the folder name letter-for-letter with the notice email; a stray double space in the Customer Reference# is the usual cause.</li>
-<li><b>Dry run names an old update of the right job:</b> normal — no newer email exists in the folder; the reply still lands on the correct thread.</li>
-<li><b>Nothing triggers:</b> From AND To must both be your work address and the subject must contain *BV* with asterisks; check the flow is On.</li>
-<li><b>Broken image box:</b> Include Attachments = Yes on the trigger, and the relay email's image must exceed 50 KB (Create Image output always does).</li>
+<li><b>Nothing gets filed:</b> the ShouldFile condition must be From contains your work address AND Subject contains REF# AND Subject contains *BV* (asterisks included); check the flow is On, and that you CC yourself so a copy actually arrives in your Inbox.</li>
+<li><b>A colleague&rsquo;s email got filed:</b> Row 1 (From contains YOUR address) is missing or wrong — without it, any tool-tagged email you are CC&rsquo;d on would file.</li>
+<li><b>Wrong folder name:</b> compare the folder letter-for-letter with the subject; a stray double space in the reference is the usual cause.</li>
+<li><b>Nothing triggers at all:</b> the trigger must be When a new email arrives (V3) on the Inbox, and the flow must be On.</li>
 </ul>`;
 function renderHelp(tab){
   const b1 = document.getElementById("helpTab1"), b2 = document.getElementById("helpTab2");
@@ -3269,6 +3122,24 @@ function renderHelp(tab){
   b2.classList.toggle("btn-navy", tab === 2);
   document.getElementById("helpBody").innerHTML = (tab === 1) ? HELP_USING : HELP_PA;
   window.scrollTo(0,0);
+}
+document.getElementById("helpBody").addEventListener("click", (e)=>{
+  const btn = e.target.closest(".copybtn");
+  if(!btn) return;
+  const src = document.getElementById(btn.getAttribute("data-copy"));
+  if(!src) return;
+  const text = src.innerText;
+  const done = ()=>{ const o = btn.textContent; btn.textContent = "Copied \u2713"; setTimeout(()=>{ btn.textContent = o; }, 1600); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>{ fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+});
+function fallbackCopy(text){
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); } catch(e){}
+  document.body.removeChild(ta);
 }
 document.getElementById("helpTab1").onclick = ()=> renderHelp(1);
 document.getElementById("helpTab2").onclick = ()=> renderHelp(2);
