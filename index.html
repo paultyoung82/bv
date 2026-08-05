@@ -124,6 +124,11 @@ textarea.tall{min-height:230px; resize:vertical; line-height:1.55;}
 .doc-etf .k{color:#5A6A8C;}
 .doc-etf b{font-family:'Archivo'; color:#D6152C; font-weight:600;}
 .doc-comments{font-size:13.5px; white-space:pre-wrap; line-height:1.6; color:#17203A;}
+#updHistField{display:flex; flex-wrap:wrap; gap:0 26px; align-items:flex-start;}
+#updHistField .uh-col{display:flex; flex-direction:column;}
+#updHistField.uh-editing{display:block; white-space:pre-wrap; outline:2px solid var(--navy); outline-offset:-1px; background:#fff; cursor:text;}
+.doc-hist{display:flex; flex-wrap:nowrap; gap:0 18px; align-items:flex-start; font-size:12.5px; line-height:1.55; color:#17203A;}
+.doc-hist .dh-col{display:flex; flex-direction:column; white-space:nowrap;}
 /* preview toggles + email picker */
 .togglerow{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
 .toggle{display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); background:#fff; border-radius:20px; padding:7px 13px; font-size:13px; color:var(--label); user-select:none; cursor:pointer;}
@@ -545,7 +550,7 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.4.2";
+const APP_VERSION = "V.2.4.3";
 /* Update image render scale. Layout is 720px wide, so final PNG width = 720 * IMG_SCALE.
    1 => 720px (current, smallest readable). 1.25 => 900px. 1.5 => 1080px. 2 => 1440px (original, very large). */
 const IMG_SCALE = 1;
@@ -1004,20 +1009,62 @@ function markSent(j){
   updateLastSentTag(j);
   renderUpdHist(j);
 }
+function updHistLines(s){
+  return (s || "").replace(/\r/g, "").split("\n").map(x => x.trim()).filter(Boolean);
+}
+/* Split lines into columns. perCol rows per column, filling column 1 top-down first. */
+function updHistCols(lines, perCol){
+  const cols = [];
+  for(let i = 0; i < lines.length; i += perCol) cols.push(lines.slice(i, i + perCol));
+  return cols;
+}
+function updHistColsHTML(lines, perCol, cls){
+  return updHistCols(lines, perCol).map(col =>
+    '<div class="' + cls + '">' + col.map(l => "<div>" + esc(l) + "</div>").join("") + "</div>"
+  ).join("");
+}
 function renderUpdHist(j){
   const el = document.getElementById("updHistField");
   if(!el) return;
-  const txt = (j && j.updateHistory) ? j.updateHistory.trim() : "";
-  el.textContent = txt || "\u2014";
-  el.style.color = txt ? "var(--deep)" : "var(--hint)";
+  if(el.dataset.editing === "1") return;   /* don't clobber an in-progress edit */
+  const lines = updHistLines(j && j.updateHistory);
+  if(lines.length){
+    el.innerHTML = updHistColsHTML(lines, 10, "uh-col");
+    el.style.color = "var(--deep)";
+  } else {
+    el.textContent = "\u2014";
+    el.style.color = "var(--hint)";
+  }
   el.onclick = ()=>{
+    if(el.dataset.editing === "1") return;
     const j2 = activeJob(); if(!j2) return;
-    const v = prompt("Update History \u2014 one 'Sent ...' line per update, newest at top.\nEdit freely; this shows on the image when not empty.", j2.updateHistory || "");
-    if(v == null) return;
-    j2.updateHistory = v.replace(/\r/g, "");
+    startUpdHistEdit(el, j2);
+  };
+}
+function startUpdHistEdit(el, j){
+  el.dataset.editing = "1";
+  el.classList.add("uh-editing");
+  el.textContent = j.updateHistory ? j.updateHistory.replace(/\r/g, "").trim() : "";
+  el.setAttribute("contenteditable", "plaintext-only");
+  if(el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable", "true");
+  el.focus();
+  /* caret to end */
+  try {
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  } catch(e){}
+  const finish = ()=>{
+    el.removeEventListener("blur", finish);
+    el.removeAttribute("contenteditable");
+    el.classList.remove("uh-editing");
+    el.dataset.editing = "0";
+    const j2 = activeJob(); if(!j2) return;
+    const raw = (el.innerText || "").replace(/\r/g, "");
+    j2.updateHistory = updHistLines(raw).join("\n");
     j2.updatedAt = Date.now(); persist();
     renderUpdHist(j2);
   };
+  el.addEventListener("blur", finish);
 }
 function sentActive(j){
   const st = parseFloat(j.status);
@@ -2059,7 +2106,13 @@ function docHTML(j){
     h += '<div class="doc-sec"><h3>' + DOC_TITLES.position + '</h3><img class="doc-mapimg" src="' + j.mapImg + '" alt="Vessel position map"></div>';
   }
   if(j.updateHistory && j.updateHistory.trim()){
-    h += '<div class="doc-sec"><h3>' + DOC_TITLES.history + '</h3><div class="doc-comments">' + esc(j.updateHistory.trim()) + "</div></div>";
+    const hl = updHistLines(j.updateHistory);
+    /* 10 rows per column up to 4 columns (40). Past that, grow rows per column
+       instead of adding columns, since the image width is the hard limit. */
+    let per = 10;
+    if(hl.length > 40) per = Math.max(15, Math.ceil(hl.length / 4));
+    h += '<div class="doc-sec"><h3>' + DOC_TITLES.history + '</h3><div class="doc-hist">' +
+         updHistColsHTML(hl, per, "dh-col") + "</div></div>";
   }
   return h;
 }
@@ -2767,7 +2820,7 @@ const HELP_USING = `
 <h4>Saved boats</h4>
 <ul>
 <li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
-<li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you actually send (Open email or the Shortcut) a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Sends within 30 minutes of each other count as one entry — the time just updates in place — so firing off 3 or 10 customers in one sitting makes a single line; a later update (more than 30 minutes on) starts a new line. Tap the field to edit or correct it by hand. When it has at least one line it prints at the bottom of the update image, under the map.</li>
+<li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you actually send (Open email or the Shortcut) a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Sends within 30 minutes of each other count as one entry — the time just updates in place — so firing off 3 or 10 customers in one sitting makes a single line; a later update (more than 30 minutes on) starts a new line. Tap the field to edit it in place — press Enter for a new line, then click away to save. Entries list in columns of 10, filling top-down before starting a new column to the right; past 40 entries the columns lengthen rather than adding more. When it has at least one line it prints at the bottom of the update image, under the map.</li>
 <li><b>Recall a boat:</b> start typing in Vsl/Boat name — saved names appear as suggestions. Pick one (or finish typing an exact saved name) and the Boat link fills in automatically and the live map refreshes.</li>
 <li><b>Manage boats:</b> opens the library. Edit a name or link in place (saves when you leave the field) or delete with the &#215; button. Deleting a saved boat never changes any job.</li>
 </ul>
