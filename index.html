@@ -331,6 +331,7 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
 </div>
 <input type="file" id="importFile" accept=".json,application/json" style="display:none">
 <datalist id="boatNames"></datalist>
+<datalist id="portNames"></datalist>
 <div id="clientOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
   <div class="card" style="max-width:620px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
     <div class="card-h" style="position:sticky; top:0; z-index:2; border-radius:13px 13px 0 0;"><h2>Saved clients</h2><span class="tag" id="clientCount"></span><button class="btn btn-sm" id="clientCloseTop">Close</button></div>
@@ -350,6 +351,17 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
       <div id="boatEditList"></div>
       <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="boatClose" style="margin-left:auto">Close</button></div>
       <p class="hintline">Edits save when you leave a field. Deleting a saved boat never changes any job.</p>
+    </div>
+  </div>
+</div>
+<div id="portOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
+  <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
+    <div class="card-h" style="position:sticky; top:0; z-index:2; border-radius:13px 13px 0 0;"><h2>Saved ports</h2><span class="tag" id="portCount"></span><button class="btn btn-sm" id="portCloseTop">Close</button></div>
+    <div class="card-b">
+      <div class="searchbox" style="margin-bottom:10px"><input id="portSearch" placeholder="Search ports&hellip;"></div>
+      <div id="portEditList"></div>
+      <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="portClose" style="margin-left:auto">Close</button></div>
+      <p class="hintline">Edits save when you leave a field. Deleting a saved port never changes any job.</p>
     </div>
   </div>
 </div>
@@ -550,7 +562,7 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.4.3";
+const APP_VERSION = "V.2.5.3";
 /* Update image render scale. Layout is 720px wide, so final PNG width = 720 * IMG_SCALE.
    1 => 720px (current, smallest readable). 1.25 => 900px. 1.5 => 1080px. 2 => 1440px (original, very large). */
 const IMG_SCALE = 1;
@@ -605,6 +617,12 @@ async function loadState(){
     if(braw == null) braw = localStorage.getItem("bv_boats_v1");
     if(braw){ const bd = JSON.parse(braw); boats = bd.list || []; boatsUpdatedAt = bd.updatedAt || 0; sortBoats(); }
   } catch(e){ boats = []; }
+  try{
+    let praw = null;
+    if(useIDB) praw = await idbGet("ports");
+    if(praw == null) praw = localStorage.getItem("bv_ports_v1");
+    if(praw){ const pd = JSON.parse(praw); ports = pd.list || []; portsUpdatedAt = pd.updatedAt || 0; sortPorts(); }
+  } catch(e){ ports = []; }
   try{
     let craw = null;
     if(useIDB) craw = await idbGet("clients");
@@ -673,6 +691,36 @@ function persistBoats(){
 function renderBoatNames(){
   const dl = document.getElementById("boatNames");
   if(dl) dl.innerHTML = boats.map(b => '<option value="' + esc(b.name) + '">').join("");
+}
+let ports = [];
+let portsUpdatedAt = 0;
+function persistPortsLocal(){
+  const data = JSON.stringify({list: ports, updatedAt: portsUpdatedAt});
+  if(useIDB){ idbSet("ports", data).catch(()=>{}); }
+  else { try{ localStorage.setItem("bv_ports_v1", data); }catch(e){} }
+}
+function sortPorts(){
+  ports.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), undefined, {sensitivity:"base"}));
+}
+function persistPorts(){
+  sortPorts();
+  portsUpdatedAt = Date.now();
+  persistPortsLocal();
+  if(fb.on && fb.db && !fb.viewOnly){
+    fb.db.collection("users").doc(fb.uid).collection("meta").doc("ports")
+      .set({list: JSON.parse(JSON.stringify(ports)), updatedAt: portsUpdatedAt})
+      .catch(()=>{});
+  }
+  renderPortNames();
+}
+function renderPortNames(){
+  const dl = document.getElementById("portNames");
+  if(dl) dl.innerHTML = ports.map(p => '<option value="' + esc(p.name) + '">').join("");
+}
+function findPort(name){
+  const n = String(name || "").trim().toLowerCase();
+  if(!n) return null;
+  return ports.find(p => String(p.name || "").trim().toLowerCase() === n) || null;
 }
 function findBoat(name){
   const n = String(name || "").trim().toLowerCase();
@@ -841,7 +889,7 @@ const JOB_FIELDS = [
   {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 / PBL 3422 or -", hint:"Add a / in between each barge"},
   {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"]},
   {k:"cargo",   l:"Cargo",           ph:"ex: HS VTB"},
-  {k:"port",    l:"Port",            ph:"ex: VALERO TXC"},
+  {k:"port",    l:"Port",            ph:"ex: VALERO TXC", listId:"portNames"},
   {k:"sts",     l:"S/T(s)",          ph:"ex: 089"},
   {k:"vef",     l:"VEF",             ph:"ex: 0.9994", num:true},
   {k:"status",  l:"Status",          type:"select", opts:STATUSES},
@@ -903,7 +951,8 @@ function updateAutoChip(){
 const VOL_FIELDS = [
   {k:"vShore", l:"Shore figure", num:true, ph:"ex: 350,900.56", fmt:true},
   {k:"vArr",   l:"Vsl/Bg arrival", num:true, ph:"ex: 351,073.06", fmt:true},
-  {k:"vDpt",   l:"Vsl/Bg departure", num:true, ph:"ex: 0.00", fmt:true}
+  {k:"vDpt",   l:"Vsl/Bg departure", num:true, ph:"ex: 0.00", fmt:true},
+  {k:"vef",    l:"VEF", num:true, ph:"ex: 1.0000", fmt:true}
 ];
 const FMT_DP = {vShore:2, vArr:2, vDpt:2, vef:4, e1Total:2, e1Loaded:2, e1Rate:2, e2Qty:2, e2Rate:2, rQty:2};
 const ETF1_FIELDS = [
@@ -990,20 +1039,26 @@ function updateLastSentTag(j){
   };
 }
 function markSent(j){
+  /* Called on actual send (Open email / Shortcut). Drives staleness, and
+     records ONE history line for the first send after each Create image. */
+  j.lastSent = Date.now();
+  j.updatedAt = j.lastSent;
+  if(state.histArmed === j.id){
+    state.histArmed = null;
+    stampHistory(j);
+    return;   /* stampHistory persists and refreshes */
+  }
+  persist();
+  updateLastSentTag(j);
+}
+function stampHistory(j){
+  /* One line per update round. Armed by Create image, fired by the first
+     Open email / Shortcut after it — so sending the same update to 5
+     customers records a single entry. */
   const now = Date.now();
-  const line = "Sent " + fmtSentAt(now);
   const rest = (j.updateHistory && j.updateHistory.trim())
     ? j.updateHistory.replace(/^\n+/, "").split("\n") : [];
-  /* Collapse into the top line if the last send was within 30 minutes
-     (same update round to multiple customers). Otherwise start a new line. */
-  const within = j.lastSent && (now - j.lastSent) <= 30 * 60 * 1000;
-  if(within && rest.length){
-    rest[0] = line;
-    j.updateHistory = rest.join("\n");
-  } else {
-    j.updateHistory = line + (rest.length ? "\n" + rest.join("\n") : "");
-  }
-  j.lastSent = now;
+  j.updateHistory = "Sent " + fmtSentAt(now) + (rest.length ? "\n" + rest.join("\n") : "");
   j.updatedAt = now;
   persist();
   updateLastSentTag(j);
@@ -1091,6 +1146,27 @@ function toast(msg){
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
   clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 2600);
+}
+function toastUndo(msg, onUndo, ms){
+  const t = document.getElementById("toast");
+  t.innerHTML = "";
+  const s = document.createElement("span");
+  s.textContent = msg;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = "Undo";
+  b.style.cssText = "margin-left:12px; background:transparent; border:1px solid rgba(255,255,255,.55); color:#fff; font:inherit; font-weight:600; padding:3px 12px; border-radius:14px; cursor:pointer;";
+  b.onclick = (e)=>{
+    e.stopPropagation();
+    clearTimeout(toast._t);
+    t.classList.remove("show");
+    t.textContent = "";
+    try{ onUndo(); }catch(err){}
+  };
+  t.appendChild(s); t.appendChild(b);
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>{ t.classList.remove("show"); t.textContent = ""; }, ms || 9000);
 }
 function autosize(el){
   el.style.height = "auto";
@@ -1513,6 +1589,7 @@ function renderEditor(){
   const j = activeJob(); if(!j) return;
   document.getElementById("secJob").innerHTML = JOB_FIELDS.map(f => fieldHTML(f, j[f.k])).join("");
   renderBoatNames();
+  renderPortNames();
   renderBoatCtl();
   renderEmails();
   renderJobNav();
@@ -1552,7 +1629,20 @@ function renderBoatCtl(){
   if(!el) return;
   el.innerHTML =
     '<button class="btn btn-sm btn-navy" type="button" id="btnSaveBoat">&#128190; Save Boat</button>' +
-    '<button class="btn btn-sm" type="button" id="btnManageBoats">Manage boats (' + boats.length + ')</button>';
+    '<button class="btn btn-sm" type="button" id="btnManageBoats">Manage boats (' + boats.length + ')</button>' +
+    '<button class="btn btn-sm btn-navy" type="button" id="btnSavePort">&#128190; Save Port</button>' +
+    '<button class="btn btn-sm" type="button" id="btnManagePorts">Manage ports (' + ports.length + ')</button>';
+  document.getElementById("btnSavePort").onclick = ()=>{
+    const j = activeJob(); if(!j) return;
+    const name = String(j.port || "").trim();
+    if(!name){ toast("Enter a port first"); return; }
+    if(findPort(name)){ toast("Port already saved: " + name); return; }
+    ports.push({id: uid(), name: name});
+    persistPorts();
+    renderBoatCtl();
+    toast("Port saved: " + name);
+  };
+  document.getElementById("btnManagePorts").onclick = ()=>{ renderPortOverlay(); document.getElementById("portOverlay").style.display = "block"; };
   document.getElementById("btnSaveBoat").onclick = ()=>{
     const j = activeJob(); if(!j) return;
     const name = String(j.vessel || "").trim();
@@ -1675,6 +1765,51 @@ function applyBoatFilter(){
 }
 document.getElementById("boatSearch").addEventListener("input", applyBoatFilter);
 document.getElementById("boatClose").onclick = document.getElementById("boatCloseTop").onclick = ()=>{ document.getElementById("boatOverlay").style.display = "none"; renderBoatCtl(); };
+function renderPortOverlay(){
+  document.getElementById("portCount").textContent = ports.length + " saved";
+  const box = document.getElementById("portEditList");
+  box.innerHTML = ports.length ? ports.map((p,i) =>
+    '<div class="boatrow" data-pn="' + esc(String(p.name||"").toLowerCase()) + '">' +
+      '<input class="bname" data-pi="' + i + '" value="' + esc(p.name) + '" placeholder="Port">' +
+      '<button class="btn btn-sm btn-navy" type="button" data-puse="' + i + '" style="flex:0 0 auto; padding:8px 11px;">Use</button>' +
+      '<button class="sbtn del" type="button" data-pdel="' + i + '" title="Delete">&#215;</button>' +
+    "</div>"
+  ).join("") : '<div class="empty">No saved ports yet. Open a job, fill Port, then press Save Port.</div>';
+  box.querySelectorAll("[data-puse]").forEach(btn => btn.onclick = ()=>{
+    const j = activeJob();
+    if(!j){ toast("Open a job first, then pick a port"); return; }
+    const p = ports[+btn.dataset.puse]; if(!p) return;
+    j.port = p.name || "";
+    j.updatedAt = Date.now(); persist();
+    const pi = document.querySelector('#secJob [data-k="port"]');
+    if(pi) pi.value = j.port;
+    renderJobNav();
+    document.getElementById("portOverlay").style.display = "none";
+    toast("Port set on this job: " + (p.name || ""));
+  });
+  applyPortFilter();
+  box.querySelectorAll("[data-pdel]").forEach(btn => btn.onclick = ()=>{
+    const i = +btn.dataset.pdel;
+    if(!confirm("Delete saved port " + (ports[i] && ports[i].name ? ports[i].name : "") + "?")) return;
+    ports.splice(i,1); persistPorts(); renderPortOverlay(); renderBoatCtl();
+  });
+}
+document.getElementById("portEditList").addEventListener("change", (e)=>{
+  const ds = e.target.dataset || {};
+  if(ds.pi == null) return;
+  const p = ports[+ds.pi]; if(!p) return;
+  p.name = e.target.value;
+  persistPorts();
+  renderPortOverlay();
+});
+function applyPortFilter(){
+  const q = String((document.getElementById("portSearch") || {}).value || "").trim().toLowerCase();
+  document.querySelectorAll("#portEditList .boatrow").forEach(r => {
+    r.style.display = (!q || (r.dataset.pn || "").indexOf(q) > -1) ? "" : "none";
+  });
+}
+document.getElementById("portSearch").addEventListener("input", applyPortFilter);
+document.getElementById("portClose").onclick = document.getElementById("portCloseTop").onclick = ()=>{ document.getElementById("portOverlay").style.display = "none"; renderBoatCtl(); };
 function renderTimes(j){
   const list = activeTimes(j);
   const half = Math.ceil(list.length / 2);
@@ -1796,6 +1931,7 @@ document.getElementById("view-edit").addEventListener("input", (e)=>{
   }
   if(!ds.k) return;
   j[ds.k] = e.target.value; j.updatedAt = Date.now();
+  if(ds.k === "vef") mirrorField("vef", e.target);
   persist(); refreshCalcs();
   if(ds.k === "vShore" || ds.k === "vArr" || ds.k === "vDpt" || ds.k === "vef") syncRateQty(j);
   if(ds.k === "vessel"){
@@ -1871,7 +2007,18 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
         renderTimeline();
       } else {
         const t = parseFreeTime(tv);
-        if(t != null){ state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip(); }
+        if(t != null){
+          /* If the entry was an unambiguous D/M/YY (first part > 12),
+             rewrite the visible text to M/D/YY so it matches everything else. */
+          const dm = tv.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(\s+.*)?$/);
+          if(dm && +dm[1] > 12 && +dm[2] <= 12){
+            const fixed = dm[2] + "/" + dm[1] + "/" + dm[3] + (dm[4] || "");
+            e.target.value = fixed; j[k] = fixed;
+            j.updatedAt = Date.now(); persist();
+            toast("Date read as day/month \u2014 saved as " + fixed);
+          }
+          state.autoDate = fmtDateOnly(new Date(t)); updateAutoChip();
+        }
       }
     }
     if(k === "comm" || k === "comp") syncRateTimes(j);
@@ -1887,6 +2034,7 @@ document.getElementById("view-edit").addEventListener("change", (e)=>{
   const formatted = n.toLocaleString("en-US",{minimumFractionDigits:dp, maximumFractionDigits:dp});
   e.target.value = formatted;
   j[k] = formatted; j.updatedAt = Date.now(); persist(); refreshCalcs();
+  if(k === "vef") mirrorField("vef", e.target);
   if(k === "vShore" || k === "vArr" || k === "vDpt" || k === "vef") syncRateQty(j);
 });
 /* Enter moves DOWN to the field below in every section; Tab moves right (natural order) */
@@ -1957,10 +2105,21 @@ document.getElementById("btnDup").onclick = ()=>{
 };
 document.getElementById("btnDel").onclick = ()=>{
   const j = activeJob(); if(!j) return;
-  if(!confirm("Delete " + (j.jobNo || "this job") + "? This cannot be undone.")) return;
+  if(!confirm("Delete " + (j.jobNo || "this job") + "?")) return;
+  const snapshot = JSON.parse(JSON.stringify(j));
+  const idx = state.jobs.findIndex(x => x.id === j.id);
   state.jobs = state.jobs.filter(x => x.id !== j.id); persist();
   cloudDelete([j.id]);
-  renderJobs(); show("jobs"); toast("Job deleted");
+  renderJobs(); show("jobs");
+  toastUndo("Job deleted", ()=>{
+    if(state.jobs.some(x => x.id === snapshot.id)) return;
+    if(idx >= 0 && idx <= state.jobs.length) state.jobs.splice(idx, 0, snapshot);
+    else state.jobs.push(snapshot);
+    snapshot.updatedAt = Date.now();
+    persist();
+    renderJobs();
+    toast("Job restored: " + (snapshot.jobNo || ""));
+  });
 };
 
 /* ================= preview ================= */
@@ -2027,14 +2186,28 @@ function parseFreeTime(s){
     const hm = m[4].padStart(4, "0");
     hh = +hm.slice(0,2); mi = +hm.slice(2);
   }
+  let a = +m[1], b = +m[2];
+  /* Unambiguous D/M/YY: first part can't be a month, second part can.
+     Swap it. Ambiguous cases (both <= 12) are left as M/D/YY. */
+  if(a > 12 && b <= 12){ const t = a; a = b; b = t; }
   let yy = +m[3]; if(yy < 100) yy += 2000;
-  const d = new Date(yy, +m[1]-1, +m[2], hh, mi);
+  const d = new Date(yy, a-1, b, hh, mi);
   return isNaN(d) ? null : d.getTime();
+}
+function mirrorField(key, src){
+  /* Keeps twin inputs bound to the same job key in step (VEF appears in both
+     Job information and Volume comparison). */
+  document.querySelectorAll('#view-edit [data-k="' + key + '"]').forEach(el => {
+    if(el !== src && el.value !== src.value) el.value = src.value;
+  });
+}
+function titleCaseLabel(s){
+  return String(s || "").toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
 }
 function timeRows(fields, j){
   const items = fields.map((f,i) => ({l: f.l, i, v: j[f.k], t: parseFreeTime(j[f.k])}));
   (j.customTimes || []).forEach((c, ci) => {
-    items.push({l: (c.label && c.label.trim()) ? c.label.trim() : "Custom", i: 1000 + ci, v: c.value, t: parseFreeTime(c.value)});
+    items.push({l: (c.label && c.label.trim()) ? titleCaseLabel(c.label.trim()) : "Custom", i: 1000 + ci, v: c.value, t: parseFreeTime(c.value)});
   });
   return items.filter(x => x.v && String(x.v).trim())
     .sort((a,b)=>{
@@ -2370,6 +2543,7 @@ async function generateImage(){
     const scBtn = document.getElementById("imgShortcut");
     if(scBtn) scBtn.onclick = sendViaShortcut;
     document.getElementById("imgSave").onclick = saveImage;
+    state.histArmed = j.id;
     toast("Image ready — copy, share or save it, then open your email");
   } catch(err){
     toast("Image failed: " + (err && err.message ? err.message : err));
@@ -2674,6 +2848,19 @@ function startSync(){
       if(state.view === "edit") renderBoatCtl();
     }
   }, ()=>{});
+  const portRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("ports");
+  if(fb.unsubPorts) fb.unsubPorts();
+  fb.unsubPorts = portRef.onSnapshot(d => {
+    const dat = d.data();
+    if(dat && (dat.updatedAt || 0) > portsUpdatedAt){
+      ports = dat.list || [];
+      portsUpdatedAt = dat.updatedAt;
+      sortPorts();
+      persistPortsLocal();
+      renderPortNames();
+      if(state.view === "edit") renderBoatCtl();
+    }
+  }, ()=>{});
   const cliRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("clients");
   if(fb.unsubClients) fb.unsubClients();
   fb.unsubClients = cliRef.onSnapshot(d => {
@@ -2742,7 +2929,8 @@ document.getElementById("syncOff").onclick = ()=>{
   if(fb.unsubBoats) fb.unsubBoats();
   if(fb.unsubNotes) fb.unsubNotes();
   if(fb.unsubClients) fb.unsubClients();
-  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null;
+  if(fb.unsubPorts) fb.unsubPorts();
+  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null; fb.unsubPorts = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
   fb.viewOnly = false;
@@ -2820,7 +3008,8 @@ const HELP_USING = `
 <h4>Saved boats</h4>
 <ul>
 <li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
-<li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you actually send (Open email or the Shortcut) a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Sends within 30 minutes of each other count as one entry — the time just updates in place — so firing off 3 or 10 customers in one sitting makes a single line; a later update (more than 30 minutes on) starts a new line. Tap the field to edit it in place — press Enter for a new line, then click away to save. Entries list in columns of 10, filling top-down before starting a new column to the right; past 40 entries the columns lengthen rather than adding more. When it has at least one line it prints at the bottom of the update image, under the map.</li>
+<li><b>Save Port / Manage ports:</b> with the Port filled, press Save Port to add it to your port library (synced like boats). The Port field then offers type-ahead from your saved list. Manage ports opens the library to rename, Use, or delete entries; deleting never changes any job.</li>
+<li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you press <b>Create image</b> a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Because one image serves every customer on that update, pressing Open email once per customer afterwards adds no extra lines — one update, one entry. Tap the field to edit it in place — press Enter for a new line, then click away to save. Entries list in columns of 10, filling top-down before starting a new column to the right; past 40 entries the columns lengthen rather than adding more. When it has at least one line it prints at the bottom of the update image, under the map.</li>
 <li><b>Recall a boat:</b> start typing in Vsl/Boat name — saved names appear as suggestions. Pick one (or finish typing an exact saved name) and the Boat link fills in automatically and the live map refreshes.</li>
 <li><b>Manage boats:</b> opens the library. Edit a name or link in place (saves when you leave the field) or delete with the &#215; button. Deleting a saved boat never changes any job.</li>
 </ul>
