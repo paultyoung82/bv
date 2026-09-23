@@ -365,6 +365,20 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
     </div>
   </div>
 </div>
+<div id="opsOverlay" style="display:none; position:fixed; inset:0; background:rgba(16,30,66,.45); z-index:80;">
+  <div class="card" style="max-width:600px; margin:60px auto 0; max-height:calc(100vh - 120px); overflow:auto;">
+    <div class="card-h" style="position:sticky; top:0; z-index:2; border-radius:13px 13px 0 0;"><h2>Operations</h2><span class="tag" id="opsCount"></span><button class="btn btn-sm" id="opsCloseTop">Close</button></div>
+    <div class="card-b">
+      <div class="boatrow" style="margin-bottom:12px;">
+        <input class="bname" id="opsNew" placeholder="New operation, e.g. SAMPLE" style="text-transform:uppercase;">
+        <button class="btn btn-sm btn-navy" type="button" id="opsAdd" style="flex:0 0 auto; padding:8px 14px;">Add</button>
+      </div>
+      <div id="opsEditList"></div>
+      <div style="display:flex; margin-top:12px;"><button class="btn btn-sm" id="opsClose" style="margin-left:auto">Close</button></div>
+      <p class="hintline">LOAD, DISCH and XFER are built in and can&rsquo;t be removed. Operations you add use absolute (XFER-style) volume math. Renaming or deleting one never changes a job that already uses it.</p>
+    </div>
+  </div>
+</div>
 
 <div class="wrap">
 
@@ -562,7 +576,7 @@ body.dark .help .cpblock{background:#0F1830; color:#CBD6EC;}
 
 <script>
 "use strict";
-const APP_VERSION = "V.2.5.3";
+const APP_VERSION = "V.2.5.4";
 /* Update image render scale. Layout is 720px wide, so final PNG width = 720 * IMG_SCALE.
    1 => 720px (current, smallest readable). 1.25 => 900px. 1.5 => 1080px. 2 => 1440px (original, very large). */
 const IMG_SCALE = 1;
@@ -623,6 +637,12 @@ async function loadState(){
     if(praw == null) praw = localStorage.getItem("bv_ports_v1");
     if(praw){ const pd = JSON.parse(praw); ports = pd.list || []; portsUpdatedAt = pd.updatedAt || 0; sortPorts(); }
   } catch(e){ ports = []; }
+  try{
+    let oraw = null;
+    if(useIDB) oraw = await idbGet("ops");
+    if(oraw == null) oraw = localStorage.getItem("bv_ops_v1");
+    if(oraw){ const od = JSON.parse(oraw); ops = od.list || []; opsUpdatedAt = od.updatedAt || 0; sortOps(); }
+  } catch(e){ ops = []; }
   try{
     let craw = null;
     if(useIDB) craw = await idbGet("clients");
@@ -716,6 +736,34 @@ function persistPorts(){
 function renderPortNames(){
   const dl = document.getElementById("portNames");
   if(dl) dl.innerHTML = ports.map(p => '<option value="' + esc(p.name) + '">').join("");
+}
+const BUILTIN_OPS = ["LOAD","DISCH","XFER"];
+let ops = [];
+let opsUpdatedAt = 0;
+function allOps(){ return [""].concat(BUILTIN_OPS, ops.map(o => o.name)); }
+function persistOpsLocal(){
+  const data = JSON.stringify({list: ops, updatedAt: opsUpdatedAt});
+  if(useIDB){ idbSet("ops", data).catch(()=>{}); }
+  else { try{ localStorage.setItem("bv_ops_v1", data); }catch(e){} }
+}
+function sortOps(){
+  ops.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), undefined, {sensitivity:"base"}));
+}
+function persistOps(){
+  sortOps();
+  opsUpdatedAt = Date.now();
+  persistOpsLocal();
+  if(fb.on && fb.db && !fb.viewOnly){
+    fb.db.collection("users").doc(fb.uid).collection("meta").doc("ops")
+      .set({list: JSON.parse(JSON.stringify(ops)), updatedAt: opsUpdatedAt})
+      .catch(()=>{});
+  }
+}
+function findOp(name){
+  const n = String(name || "").trim().toLowerCase();
+  if(!n) return null;
+  if(BUILTIN_OPS.some(b => b.toLowerCase() === n)) return {builtin:true, name:n.toUpperCase()};
+  return ops.find(o => String(o.name || "").trim().toLowerCase() === n) || null;
 }
 function findPort(name){
   const n = String(name || "").trim().toLowerCase();
@@ -887,7 +935,7 @@ const JOB_FIELDS = [
   {k:"jobNo",   l:"BV Job#",         ph:"ex: USTEX-26-00805"},
   {k:"vessel",  l:"Vsl / Boat name", ph:"ex: Hafnia Australia", listId:"boatNames"},
   {k:"barges",  l:"Barge(s)",        ph:"ex: KIRBY 27715 / PBL 3422 or -", hint:"Add a / in between each barge"},
-  {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"]},
+  {k:"operation",l:"Operation",      type:"select", opts:["","LOAD","DISCH","XFER"], dynOpts:()=>allOps()},
   {k:"cargo",   l:"Cargo",           ph:"ex: HS VTB"},
   {k:"port",    l:"Port",            ph:"ex: VALERO TXC", listId:"portNames"},
   {k:"sts",     l:"S/T(s)",          ph:"ex: 089"},
@@ -974,7 +1022,7 @@ const RATE_FIELDS = [
 
 function blankJob(){
   const j = { id: uid(), createdAt: Date.now(), updatedAt: Date.now(), customTimes: [],
-    status:"1.1 Pending", incVol:true, incEtf:false, incTimes:true, incRate:false, asOf:"", comments:"", refNo:"", mapImg:"", updateHistory:"",
+    status:"1.1 Pending", incVol:true, incEtf:false, incTimes:true, incRate:false, incVslLbl:true, asOf:"", comments:"", refNo:"", mapImg:"", updateHistory:"",
     emails:[{to:"", cc:"", subject:"", ref:"", relay:"*BV*"}], sendIdx:0 };
   [].concat(JOB_FIELDS, MOVE_TIMES, VOL_FIELDS, ETF1_FIELDS, ETF2_FIELDS, RATE_FIELDS)
     .forEach(f => { if(!(f.k in j)) j[f.k] = ""; });
@@ -1197,8 +1245,8 @@ function computeVol(j){
   function orient(fig){
     if(fig == null || shore == null) return null;
     if(op === "DISCH") return shore - fig;
-    if(op === "XFER") return Math.abs(fig - shore);
-    return fig - shore;
+    if(op === "LOAD" || op === "") return fig - shore;
+    return Math.abs(fig - shore);   /* XFER and any custom operation: absolute */
   }
   const difference = orient(diff);
   const pct = (difference != null && shore) ? difference/shore : null;
@@ -1571,7 +1619,9 @@ function fieldHTML(f, val){
   const span = f.span === 2 ? " span2" : "";
   let inner;
   if(f.type === "select"){
-    inner = '<select data-k="' + f.k + '">' + f.opts.map(o =>
+    let opts = f.dynOpts ? f.dynOpts() : f.opts;
+    if(val && opts.indexOf(val) < 0) opts = opts.concat([val]);   /* keep a renamed/deleted value visible */
+    inner = '<select data-k="' + f.k + '">' + opts.map(o =>
       '<option value="' + esc(o) + '"' + (o===val?" selected":"") + ">" + (o||"—") + "</option>").join("") + "</select>";
   } else if(f.type === "datetime-local"){
     inner = '<input type="datetime-local" data-k="' + f.k + '" value="' + esc(val) + '">';
@@ -1631,7 +1681,9 @@ function renderBoatCtl(){
     '<button class="btn btn-sm btn-navy" type="button" id="btnSaveBoat">&#128190; Save Boat</button>' +
     '<button class="btn btn-sm" type="button" id="btnManageBoats">Manage boats (' + boats.length + ')</button>' +
     '<button class="btn btn-sm btn-navy" type="button" id="btnSavePort">&#128190; Save Port</button>' +
-    '<button class="btn btn-sm" type="button" id="btnManagePorts">Manage ports (' + ports.length + ')</button>';
+    '<button class="btn btn-sm" type="button" id="btnManagePorts">Manage ports (' + ports.length + ')</button>' +
+    '<button class="btn btn-sm" type="button" id="btnManageOps">Manage operations (' + ops.length + ')</button>';
+  document.getElementById("btnManageOps").onclick = ()=>{ renderOpsOverlay(); document.getElementById("opsOverlay").style.display = "block"; };
   document.getElementById("btnSavePort").onclick = ()=>{
     const j = activeJob(); if(!j) return;
     const name = String(j.port || "").trim();
@@ -1810,6 +1862,53 @@ function applyPortFilter(){
 }
 document.getElementById("portSearch").addEventListener("input", applyPortFilter);
 document.getElementById("portClose").onclick = document.getElementById("portCloseTop").onclick = ()=>{ document.getElementById("portOverlay").style.display = "none"; renderBoatCtl(); };
+function renderOpsOverlay(){
+  document.getElementById("opsCount").textContent = (BUILTIN_OPS.length + ops.length) + " total";
+  const box = document.getElementById("opsEditList");
+  const builtin = BUILTIN_OPS.map(b =>
+    '<div class="boatrow"><input class="bname" value="' + b + '" disabled style="opacity:.6;">' +
+    '<span class="tag" style="flex:0 0 auto; padding:0 6px;">built-in</span></div>').join("");
+  const custom = ops.map((o,i) =>
+    '<div class="boatrow">' +
+      '<input class="bname" data-oi="' + i + '" value="' + esc(o.name) + '" style="text-transform:uppercase;">' +
+      '<button class="sbtn del" type="button" data-odel="' + i + '" title="Delete">&#215;</button>' +
+    "</div>").join("");
+  box.innerHTML = builtin + custom;
+  box.querySelectorAll("[data-odel]").forEach(btn => btn.onclick = ()=>{
+    const i = +btn.dataset.odel;
+    if(!confirm("Delete operation " + (ops[i] && ops[i].name ? ops[i].name : "") + "?")) return;
+    ops.splice(i,1); persistOps(); renderOpsOverlay();
+  });
+}
+function addOp(){
+  const inp = document.getElementById("opsNew");
+  const name = String(inp.value || "").trim().toUpperCase();
+  if(!name){ toast("Type an operation name first"); return; }
+  if(findOp(name)){ toast("Already in the list: " + name); return; }
+  ops.push({id: uid(), name: name});
+  persistOps();
+  inp.value = "";
+  renderOpsOverlay();
+  toast("Operation added: " + name);
+}
+document.getElementById("opsAdd").onclick = addOp;
+document.getElementById("opsNew").addEventListener("keydown", (e)=>{ if(e.key === "Enter"){ e.preventDefault(); addOp(); } });
+document.getElementById("opsEditList").addEventListener("change", (e)=>{
+  const ds = e.target.dataset || {};
+  if(ds.oi == null) return;
+  const o = ops[+ds.oi]; if(!o) return;
+  const name = String(e.target.value || "").trim().toUpperCase();
+  if(!name){ toast("Name can't be blank"); renderOpsOverlay(); return; }
+  const dup = findOp(name);
+  if(dup && dup !== o){ toast("Already in the list: " + name); renderOpsOverlay(); return; }
+  o.name = name;
+  persistOps();
+  renderOpsOverlay();
+});
+document.getElementById("opsClose").onclick = document.getElementById("opsCloseTop").onclick = ()=>{
+  document.getElementById("opsOverlay").style.display = "none";
+  if(state.view === "edit") renderEditor();
+};
 function renderTimes(j){
   const list = activeTimes(j);
   const half = Math.ceil(list.length / 2);
@@ -2127,10 +2226,12 @@ const TOGGLES = [
   {k:"incTimes", l:"Movement times"},
   {k:"incVol", l:"Volume comparison"},
   {k:"incEtf", l:"ETF"},
-  {k:"incRate", l:"Load / discharge rate"}
+  {k:"incRate", l:"Load / discharge rate"},
+  {k:"incVslLbl", l:"Vsl/Boat & Barge labels"}
 ];
 function renderPreview(){
   const j = activeJob(); if(!j) return;
+  if(j.incVslLbl === undefined) j.incVslLbl = true;   /* older jobs: labels on */
   document.getElementById("prevToggles").innerHTML = TOGGLES.map(t =>
     '<label class="toggle' + (j[t.k]?" on":"") + '"><input type="checkbox" data-t="' + t.k + '"' + (j[t.k]?" checked":"") + ">" + t.l + "</label>"
   ).join("");
@@ -2163,7 +2264,7 @@ function renderPreview(){
     "; paste or attach the image, review, send.";
 }
 function kv(label, value){
-  return '<div class="doc-kv"><div class="k">' + esc(label) + '</div><div class="v">' + (esc(value) || "&mdash;") + "</div></div>";
+  return '<div class="doc-kv"><div class="k">' + (label ? esc(label) : "&nbsp;") + '</div><div class="v">' + (esc(value) || "&mdash;") + "</div></div>";
 }
 /* barges separated by " / " print one per line in the update image */
 function kvBarges(label, value){
@@ -2173,7 +2274,7 @@ function kvBarges(label, value){
   const body = parts.length > 1
     ? parts.map(x => '<div class="bgline">' + esc(x) + "</div>").join("")
     : esc(raw);
-  return '<div class="doc-kv"><div class="k">' + esc(label) + '</div><div class="v">' + body + "</div></div>";
+  return '<div class="doc-kv"><div class="k">' + (label ? esc(label) : "&nbsp;") + '</div><div class="v">' + body + "</div></div>";
 }
 function parseFreeTime(s){
   s = String(s || "");
@@ -2228,7 +2329,7 @@ function docHTML(j){
     '<div class="dm-right"><div class="dm-job">' + esc(j.jobNo || "") + '</div>' +
     '<div class="dm-asof">' + (j.asOf ? "Update as of " + esc(j.asOf) : "") + "</div></div></div>";
   h += '<div class="doc-sec"><div class="doc-grid">' +
-    kv("Vsl / Boat", j.vessel) + kvBarges("Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
+    kv(j.incVslLbl === false ? "" : "Vsl / Boat", j.vessel) + kvBarges(j.incVslLbl === false ? "" : "Barge(s)", j.barges) + kv("Operation", j.operation) + kv("Cargo", j.cargo) +
     kv("Port", j.port) + kv("S/T(s)", j.sts) + kv("VEF", j.vef) + kv("Status", j.status) +
     "</div></div>";
   const kt = j.incTimes !== false ? timeRows(activeTimes(j), j) : "";
@@ -2861,6 +2962,18 @@ function startSync(){
       if(state.view === "edit") renderBoatCtl();
     }
   }, ()=>{});
+  const opsRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("ops");
+  if(fb.unsubOps) fb.unsubOps();
+  fb.unsubOps = opsRef.onSnapshot(d => {
+    const dat = d.data();
+    if(dat && (dat.updatedAt || 0) > opsUpdatedAt){
+      ops = dat.list || [];
+      opsUpdatedAt = dat.updatedAt;
+      sortOps();
+      persistOpsLocal();
+      if(state.view === "edit") renderEditor();
+    }
+  }, ()=>{});
   const cliRef = fb.db.collection("users").doc(fb.uid).collection("meta").doc("clients");
   if(fb.unsubClients) fb.unsubClients();
   fb.unsubClients = cliRef.onSnapshot(d => {
@@ -2930,7 +3043,8 @@ document.getElementById("syncOff").onclick = ()=>{
   if(fb.unsubNotes) fb.unsubNotes();
   if(fb.unsubClients) fb.unsubClients();
   if(fb.unsubPorts) fb.unsubPorts();
-  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null; fb.unsubPorts = null;
+  if(fb.unsubOps) fb.unsubOps();
+  fb.on = false; fb.unsub = null; fb.unsubBoats = null; fb.unsubNotes = null; fb.unsubClients = null; fb.unsubPorts = null; fb.unsubOps = null;
   try{ if(typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) firebase.auth().signOut(); }catch(e){}
   localStorage.removeItem(SYNC_CFG_KEY);
   fb.viewOnly = false;
@@ -3008,6 +3122,7 @@ const HELP_USING = `
 <h4>Saved boats</h4>
 <ul>
 <li><b>Save Boat:</b> with the boat name and boat link filled, press Save Boat. The pair is stored in your boat library (and syncs to your other devices when the sync dot is green).</li>
+<li><b>Manage operations:</b> add your own operations (e.g. SAMPLE) to the Operation dropdown, rename or delete them. LOAD, DISCH and XFER are built in. Added operations use absolute (XFER-style) volume math. Synced like boats and ports.</li>
 <li><b>Save Port / Manage ports:</b> with the Port filled, press Save Port to add it to your port library (synced like boats). The Port field then offers type-ahead from your saved list. Manage ports opens the library to rename, Use, or delete entries; deleting never changes any job.</li>
 <li><b>Update History:</b> a running log in the Job Information card, just below the Save Boat buttons. Each time you press <b>Create image</b> a <code>Sent M/D/YY at HHMM</code> line is recorded, newest at top. Because one image serves every customer on that update, pressing Open email once per customer afterwards adds no extra lines — one update, one entry. Tap the field to edit it in place — press Enter for a new line, then click away to save. Entries list in columns of 10, filling top-down before starting a new column to the right; past 40 entries the columns lengthen rather than adding more. When it has at least one line it prints at the bottom of the update image, under the map.</li>
 <li><b>Recall a boat:</b> start typing in Vsl/Boat name — saved names appear as suggestions. Pick one (or finish typing an exact saved name) and the Boat link fills in automatically and the live map refreshes.</li>
@@ -3039,7 +3154,7 @@ const HELP_USING = `
 <ul>
 <li>Enter Shore figure, Vsl/Bg arrival, Vsl/Bg departure. Numbers format to two decimals with commas when you leave the field.</li>
 <li><b>Vsl/Bg Figure</b> = the absolute difference between arrival and departure. It only calculates once BOTH boxes have a value (a typed 0.00 counts; an empty box does not).</li>
-<li><b>Movement Difference:</b> LOAD = figure minus shore; DISCH = shore minus figure; XFER = absolute value, never negative.</li>
+<li><b>Movement Difference:</b> LOAD = figure minus shore; DISCH = shore minus figure; XFER and any operation you add = absolute value, never negative.</li>
 <li><b>ACTIVE shore:</b> type ACTIVE (or any text) as the shore figure when the tank is active — it displays verbatim, the figure and w/VEF still calculate, and the differences show a dash.</li>
 <li>With a VEF entered, a second w/VEF column appears everywhere, dividing the figure by the VEF.</li>
 </ul>
@@ -3060,7 +3175,7 @@ const HELP_USING = `
 </ul>
 <h3>9. Preview &amp; Send</h3>
 <ul>
-<li>Checkboxes at the top include or exclude Movement times, Volume comparison, ETF, and Load/discharge rate from the image. With multiple email blocks, chips let you pick which email Open email uses.</li>
+<li>Checkboxes at the top include or exclude Movement times, Volume comparison, ETF, and Load/discharge rate from the image; the Vsl/Boat &amp; Barge labels checkbox hides just those two label words (the vessel and barge names still print). With multiple email blocks, chips let you pick which email Open email uses.</li>
 <li><b>Create image</b> renders the update exactly as previewed — your print-range copy. Then: <b>Copy image</b>, <b>Share &#8594; Mail</b> (iPhone: image lands in the compose body), <b>Mail via Shortcut</b> (Apple: fully assembled email — see section 11), or <b>Save PNG</b>.</li>
 <li><b>Open email</b> opens a message with To / CC / Subject (relay tag included) and the body text filled — AND auto-copies the image so it is one paste away (long-press &#8594; Paste on the phone, Ctrl/Cmd+V on desktop).</li>
 </ul>
